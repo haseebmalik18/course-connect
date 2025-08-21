@@ -2,79 +2,41 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCourses } from "@/hooks/useCourses";
+import { useAuth } from "@/hooks/useAuth";
+import AddCourseModal from "./AddCourseModal";
+import { Class } from "@/lib/types/database";
 
-interface Course {
-  id: string;
-  code: string;
-  name: string;
-  mentorCount: number;
-  fileCount: number;
-  color: string;
-}
-
-const sampleCourses: Course[] = [
-  {
-    id: "1",
-    code: "BIO 201",
-    name: "Cell Biology",
-    mentorCount: 12,
-    fileCount: 34,
-    color: "from-green-400 to-green-600"
-  },
-  {
-    id: "2",
-    code: "CHEM 104",
-    name: "General Chemistry II",
-    mentorCount: 8,
-    fileCount: 27,
-    color: "from-blue-400 to-blue-600"
-  },
-  {
-    id: "3",
-    code: "MATH 150",
-    name: "Calculus I",
-    mentorCount: 15,
-    fileCount: 42,
-    color: "from-purple-400 to-purple-600"
-  },
-  {
-    id: "4",
-    code: "PHYS 207",
-    name: "General Physics I",
-    mentorCount: 6,
-    fileCount: 19,
-    color: "from-orange-400 to-orange-600"
-  },
-  {
-    id: "5",
-    code: "CSCI 127",
-    name: "Intro to Computer Science",
-    mentorCount: 20,
-    fileCount: 56,
-    color: "from-pink-400 to-pink-600"
-  }
-];
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("courses");
+  const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
+  const { courses, loading, error, createCourse } = useCourses(user?.id);
 
-  const filteredCourses = sampleCourses.filter(course =>
-    course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCourses = courses.filter(course => {
+    const courseCode = `${course.class_subject} ${course.class_number}`;
+    return courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           course.college_name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
-  const handleCourseClick = (course: Course) => {
-    console.log("Clicked course:", course);
-    router.push(`/course/${course.id}`);
+  const handleCourseClick = (courseId: string) => {
+    router.push(`/course/${courseId}`);
   };
 
   const handleAddCourse = () => {
-    console.log("Add new course clicked");
-    // Future: router.push('/courses/add');
+    setIsAddCourseModalOpen(true);
+  };
+
+  const handleCreateCourse = async (courseData: Partial<Class>) => {
+    const result = await createCourse(courseData);
+    if (result) {
+      setIsAddCourseModalOpen(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -193,34 +155,70 @@ export default function Dashboard() {
 
             {/* Course Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {/* Loading State */}
+              {loading && (
+                <div className="col-span-full text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-4">Loading courses...</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {error && (
+                <div className="col-span-full text-center py-12">
+                  <div className="text-red-500 mb-4">
+                    <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-red-600 font-medium">Error loading courses</p>
+                  <p className="text-gray-600 text-sm">{error}</p>
+                </div>
+              )}
+
               {/* Course Cards */}
-              {filteredCourses.map((course) => (
-                <div
-                  key={course.id}
-                  onClick={() => handleCourseClick(course)}
-                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all cursor-pointer group hover:-translate-y-1"
-                >
-                  <div className={`h-2 w-full bg-gradient-to-r ${course.color} rounded-full mb-4 group-hover:shadow-md transition-all`}></div>
-                  
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">{course.code}</h3>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.name}</p>
-                  
-                  <div className="flex justify-between text-sm">
-                    <div className="flex items-center space-x-1 text-gray-500">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                      <span>{course.mentorCount} mentors</span>
-                    </div>
-                    <div className="flex items-center space-x-1 text-gray-500">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      <span>{course.fileCount} files</span>
+              {!loading && !error && filteredCourses.map((course) => {
+                const colors = [
+                  "from-green-400 to-green-600",
+                  "from-blue-400 to-blue-600", 
+                  "from-purple-400 to-purple-600",
+                  "from-orange-400 to-orange-600",
+                  "from-pink-400 to-pink-600",
+                  "from-red-400 to-red-600",
+                  "from-yellow-400 to-yellow-600",
+                  "from-indigo-400 to-indigo-600"
+                ];
+                const colorIndex = parseInt(course.class_id) % colors.length;
+                const color = colors[colorIndex];
+
+                return (
+                  <div
+                    key={course.class_id}
+                    onClick={() => handleCourseClick(course.class_id)}
+                    className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all cursor-pointer group hover:-translate-y-1"
+                  >
+                    <div className={`h-2 w-full bg-gradient-to-r ${color} rounded-full mb-4 group-hover:shadow-md transition-all`}></div>
+                    
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">{course.class_subject} {course.class_number}</h3>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.college_name}</p>
+                    
+                    <div className="flex justify-between text-sm">
+                      <div className="flex items-center space-x-1 text-gray-500">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span>{course.member_count || 0} members</span>
+                      </div>
+                      <div className="flex items-center space-x-1 text-gray-500">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span>{course.document_count || 0} files</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Add New Course Card */}
               <div
@@ -237,18 +235,37 @@ export default function Dashboard() {
             </div>
 
             {/* Empty State (if no courses found) */}
-            {filteredCourses.length === 0 && (
-              <div className="text-center py-12">
+            {!loading && !error && filteredCourses.length === 0 && courses.length > 0 && (
+              <div className="col-span-full text-center py-12">
+                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No courses match your search</h3>
+                <p className="text-gray-600">Try adjusting your search terms or add a new course.</p>
+              </div>
+            )}
+
+            {/* No Courses State */}
+            {!loading && !error && courses.length === 0 && (
+              <div className="col-span-full text-center py-12">
                 <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
-                <p className="text-gray-600">Try adjusting your search or add a new course to get started.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No courses yet</h3>
+                <p className="text-gray-600">Get started by adding your first course.</p>
               </div>
             )}
           </div>
         </main>
       </div>
+
+      {/* Add Course Modal */}
+      <AddCourseModal
+        isOpen={isAddCourseModalOpen}
+        onClose={() => setIsAddCourseModalOpen(false)}
+        onSubmit={handleCreateCourse}
+        loading={loading}
+      />
     </div>
   );
 }
