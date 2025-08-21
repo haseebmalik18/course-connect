@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server-puppeteer": "^2025.5.12",
+    "@supabase/supabase-js": "^2.55.0",
     "next": "15.5.0",
     "puppeteer": "^24.17.0",
     "react": "19.1.0",
