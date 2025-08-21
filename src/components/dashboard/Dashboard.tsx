@@ -5,18 +5,18 @@ import { useRouter } from "next/navigation";
 import { useCourses } from "@/hooks/useCourses";
 import { useAuth } from "@/hooks/useAuth";
 import AddCourseModal from "./AddCourseModal";
+import SearchBar from "./SearchBar";
 import { Class } from "@/lib/types/database";
 
 
 export default function Dashboard() {
-  const [searchQuery, setSearchQuery] = useState("");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("courses");
   const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
   const router = useRouter();
   const { user, signOut, loading: authLoading } = useAuth();
-  const { courses, loading, error, createCourse } = useCourses(user?.id);
+  const { courses, loading, error, createCourse, searchAllCourses, joinCourse } = useCourses(user?.id);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userEmail = user?.email || "";
@@ -74,11 +74,6 @@ export default function Dashboard() {
     return null;
   }
 
-  const filteredCourses = courses.filter(course => {
-    const courseCode = `${course.class_subject} ${course.class_number}`;
-    return courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           course.college_name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
 
   const handleCourseClick = (courseId: string) => {
     router.push(`/course/${courseId}`);
@@ -135,20 +130,11 @@ export default function Dashboard() {
             </div>
 
             {/* Search Bar */}
-            <div className="flex-1 max-w-2xl mx-4 lg:mx-8">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search courses..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 pl-10 pr-4 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
+            <SearchBar 
+              searchAllCourses={searchAllCourses}
+              joinCourse={joinCourse}
+              userCourses={courses}
+            />
 
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -297,7 +283,7 @@ export default function Dashboard() {
               )}
 
               {/* Course Cards */}
-              {!loading && !error && filteredCourses.map((course) => {
+              {!loading && !error && courses.map((course) => {
                 const colors = [
                   "from-green-400 to-green-600",
                   "from-blue-400 to-blue-600", 
@@ -354,16 +340,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Empty State (if no courses found) */}
-            {!loading && !error && filteredCourses.length === 0 && courses.length > 0 && (
-              <div className="col-span-full text-center py-12">
-                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No courses match your search</h3>
-                <p className="text-gray-600">Try adjusting your search terms or add a new course.</p>
-              </div>
-            )}
 
             {/* No Courses State */}
             {!loading && !error && courses.length === 0 && (
