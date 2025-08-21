@@ -22,7 +22,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-sm shadow-blue-100/50 animate-in slide-in-from-top duration-700">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-semibold text-blue-600 hover:scale-105 transition-transform duration-300 cursor-pointer">
-            CUNYConnect
+            CourseConnect
           </h1>
           <div className="flex gap-3">
             <Link
@@ -192,7 +192,7 @@ export default function LandingPage() {
       <footer className="relative px-6 py-8 border-t border-white/20 bg-gradient-to-t from-gray-50/50 to-white/90 backdrop-blur-sm animate-in fade-in duration-1000 delay-800">
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-gray-500 text-sm hover:text-gray-600 transition-colors duration-300">
-            © 2025 CUNYConnect • Built for students, by students
+            © 2025 CourseConnect • Built for students, by students
           </p>
         </div>
       </footer>

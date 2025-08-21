@@ -12,16 +12,14 @@ export default function AuthPage() {
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-white to-blue-50/20 pointer-events-none"></div>
       <div className="absolute top-0 right-0 w-96 h-96 bg-blue-100/20 rounded-full blur-3xl -translate-y-48 translate-x-48 pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-200/15 rounded-full blur-3xl translate-y-40 -translate-x-40 pointer-events-none"></div>
-      
+
       <div className="flex items-center justify-center min-h-screen p-6 relative z-10">
         <div className="w-full max-w-md">
           <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom duration-1000">
             <h1 className="text-3xl font-semibold mb-2 text-blue-600">
-              CUNYConnect
+              CourseConnect
             </h1>
-            <p className="text-gray-600">
-              Connect with fellow CUNY students
-            </p>
+            <p className="text-gray-600">Connect with fellow CUNY students</p>
           </div>
 
           <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-xl animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
