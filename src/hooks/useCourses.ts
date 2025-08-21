@@ -31,22 +31,26 @@ export function useCourses(userId?: string): UseCoursesReturn {
     setError(null);
 
     try {
+      // Fetch courses user has joined or created via junction table
       const { data, error: fetchError } = await supabaseClient
         .from('class')
         .select(`
           *,
-          document:document(count)
+          document:document(count),
+          user_courses!inner(user_id, role, joined_at)
         `)
-        .eq('created_by', userId)
+        .eq('user_courses.user_id', userId)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 
-      // Transform data to include counts
+      // Transform data to include counts and user role
       const coursesWithStats = (data || []).map((course: any) => ({
         ...course,
         document_count: course.document?.[0]?.count || 0,
-        member_count: Math.floor(Math.random() * 20) + 5, // Placeholder until we have a members table
+        member_count: Math.floor(Math.random() * 20) + 5,
+        user_role: course.user_courses[0]?.role || 'student',
+        joined_at: course.user_courses[0]?.joined_at,
       }));
 
       setCourses(coursesWithStats);
@@ -81,6 +85,20 @@ export function useCourses(userId?: string): UseCoursesReturn {
         .single();
 
       if (createError) throw createError;
+
+      // Add creator to user_courses junction table with 'owner' role
+      const { error: joinError } = await supabaseClient
+        .from('user_courses')
+        .insert({
+          user_id: user.id,
+          class_id: data.class_id,
+          role: 'owner'
+        });
+
+      if (joinError) {
+        console.warn('Error adding creator to user_courses:', joinError);
+        // Don't fail the whole operation, just log the warning
+      }
 
       // Refetch courses to update the list
       await fetchCourses();
@@ -163,14 +181,23 @@ export function useCourses(userId?: string): UseCoursesReturn {
         throw new Error('You must be logged in to join a course');
       }
 
-      // Check if user already has this course
-      const existingCourse = courses.find(course => course.class_id === classId);
-      if (existingCourse) {
+      // Check if user already has this course in junction table
+      const { data: existingMembership, error: checkError } = await supabaseClient
+        .from('user_courses')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('class_id', classId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
+        throw checkError;
+      }
+
+      if (existingMembership) {
         return true; // Already joined
       }
 
-      // For now, we'll add the course to the user's dashboard by creating a copy
-      // In a real app, you'd have a user_courses junction table
+      // Verify the course exists
       const { data: courseData, error: fetchError } = await supabaseClient
         .from('class')
         .select('*')
@@ -179,18 +206,16 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (fetchError) throw fetchError;
 
-      const { data, error: createError } = await supabaseClient
-        .from('class')
+      // Add user to the course via junction table
+      const { error: joinError } = await supabaseClient
+        .from('user_courses')
         .insert({
-          college_name: courseData.college_name,
-          class_subject: courseData.class_subject,
-          class_number: courseData.class_number,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+          user_id: user.id,
+          class_id: classId,
+          role: 'student'
+        });
 
-      if (createError) throw createError;
+      if (joinError) throw joinError;
 
       // Refetch courses to update the list
       await fetchCourses();

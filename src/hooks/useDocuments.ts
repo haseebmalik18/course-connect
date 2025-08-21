@@ -79,21 +79,20 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         fileSize: file.size
       });
 
-      // Verify user has access to this class
-      const { data: classData, error: classError } = await supabaseClient
-        .from('class')
-        .select('created_by')
+      // Verify user has access to this class via junction table
+      const { data: membership, error: membershipError } = await supabaseClient
+        .from('user_courses')
+        .select('role')
+        .eq('user_id', user.id)
         .eq('class_id', classId)
         .single();
 
-      if (classError) {
-        console.error('Class access error:', classError);
-        throw new Error('Cannot access this class');
+      if (membershipError) {
+        console.error('Class membership error:', membershipError);
+        throw new Error('You are not a member of this class');
       }
 
-      if (classData.created_by !== user.id) {
-        throw new Error('You do not have permission to upload to this class');
-      }
+      console.log('User role in class:', membership.role);
 
       // Create a unique file path
       const fileExt = file.name.split('.').pop();
