@@ -60,9 +60,10 @@ export function useWebSocketMessages(classId?: string): UseWebSocketMessagesRetu
       }));
 
       setMessages(messagesWithUsers);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch messages';
       console.error('Error fetching messages:', err);
-      setError(err.message || 'Failed to fetch messages');
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -70,12 +71,20 @@ export function useWebSocketMessages(classId?: string): UseWebSocketMessagesRetu
 
   useEffect(() => {
     if (!classId || !user?.id) {
+      setConnected(false);
       return;
     }
 
+    console.log(`Setting up SSE connection for class ${classId}, user ${user.id}`);
+
     const connectSSE = () => {
+      if (sseRef.current) {
+        sseRef.current.disconnect();
+      }
+
       sseRef.current = new ChatSSE(classId, user.id, {
         onMessage: (message: MessageWithUser) => {
+          console.log('Received message via SSE:', message);
           setMessages(prev => {
             const exists = prev.some(msg => msg.message_id === message.message_id);
             if (exists) return prev;
@@ -83,13 +92,16 @@ export function useWebSocketMessages(classId?: string): UseWebSocketMessagesRetu
           });
         },
         onDelete: (messageId: string) => {
+          console.log('Received delete via SSE:', messageId);
           setMessages(prev => prev.filter(msg => msg.message_id !== messageId));
         },
         onConnect: () => {
+          console.log('SSE connected successfully');
           setConnected(true);
           setError(null);
         },
         onDisconnect: () => {
+          console.log('SSE disconnected');
           setConnected(false);
         }
       });
@@ -101,9 +113,11 @@ export function useWebSocketMessages(classId?: string): UseWebSocketMessagesRetu
 
     return () => {
       if (sseRef.current) {
+        console.log('Cleaning up SSE connection');
         sseRef.current.disconnect();
         sseRef.current = null;
       }
+      setConnected(false);
     };
   }, [classId, user?.id]);
 
@@ -145,20 +159,26 @@ export function useWebSocketMessages(classId?: string): UseWebSocketMessagesRetu
         },
       };
 
+      // Always broadcast and add locally as fallback
       if (sseRef.current && sseRef.current.isConnected()) {
+        console.log('Broadcasting message via SSE:', messageWithUser);
         await sseRef.current.broadcast('message', messageWithUser);
       } else {
-        setMessages(prev => {
-          const exists = prev.some(msg => msg.message_id === messageWithUser.message_id);
-          if (exists) return prev;
-          return [...prev, messageWithUser];
-        });
+        console.log('SSE not connected, adding message locally');
       }
+      
+      // Add message locally in case broadcast fails or connection is down
+      setMessages(prev => {
+        const exists = prev.some(msg => msg.message_id === messageWithUser.message_id);
+        if (exists) return prev;
+        return [...prev, messageWithUser];
+      });
 
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       console.error('Error sending message:', err);
-      setError(err.message || 'Failed to send message');
+      setError(errorMessage);
       return false;
     }
   };
@@ -177,15 +197,19 @@ export function useWebSocketMessages(classId?: string): UseWebSocketMessagesRetu
       if (deleteError) throw deleteError;
 
       if (sseRef.current && sseRef.current.isConnected()) {
+        console.log('Broadcasting delete via SSE:', messageId);
         await sseRef.current.broadcast('delete', { messageId });
+      } else {
+        console.log('SSE not connected, deleting message locally');
       }
 
       setMessages(prev => prev.filter(msg => msg.message_id !== messageId));
 
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete message';
       console.error('Error deleting message:', err);
-      setError(err.message || 'Failed to delete message');
+      setError(errorMessage);
       return false;
     }
   };

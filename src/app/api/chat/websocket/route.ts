@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Global in-memory store for active connections
 const classRooms = new Map<string, Set<ReadableStreamDefaultController>>();
+
+// Add connection tracking for debugging
+let connectionCount = 0;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -13,14 +17,21 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream({
     start(controller) {
+      connectionCount++;
+      
       if (!classRooms.has(classId)) {
         classRooms.set(classId, new Set());
       }
       classRooms.get(classId)!.add(controller);
 
-      console.log(`User ${userId} joined class ${classId} via SSE`);
+      console.log(`User ${userId} joined class ${classId} via SSE. Total connections: ${connectionCount}`);
 
-      controller.enqueue(`data: ${JSON.stringify({ type: 'connected', message: 'Connected to chat' })}\n\n`);
+      // Send immediate connection confirmation
+      try {
+        controller.enqueue(`data: ${JSON.stringify({ type: 'connected', message: 'Connected to chat' })}\n\n`);
+      } catch (error) {
+        console.error('Error sending connection confirmation:', error);
+      }
 
       const heartbeat = setInterval(() => {
         try {
@@ -31,6 +42,7 @@ export async function GET(request: NextRequest) {
       }, 30000);
 
       request.signal.addEventListener('abort', () => {
+        connectionCount--;
         clearInterval(heartbeat);
         if (classRooms.has(classId)) {
           classRooms.get(classId)!.delete(controller);
@@ -38,7 +50,7 @@ export async function GET(request: NextRequest) {
             classRooms.delete(classId);
           }
         }
-        console.log(`User ${userId} left class ${classId}`);
+        console.log(`User ${userId} left class ${classId}. Total connections: ${connectionCount}`);
       });
     }
   });
@@ -56,20 +68,37 @@ export async function GET(request: NextRequest) {
 }
 
 export function broadcastToRoom(classId: string, data: any) {
+  console.log(`Broadcasting to room ${classId}:`, data);
+  
   if (classRooms.has(classId)) {
     const room = classRooms.get(classId)!;
     const message = `data: ${JSON.stringify(data)}\n\n`;
     
+    console.log(`Room ${classId} has ${room.size} active connections`);
+    
+    const disconnectedControllers: ReadableStreamDefaultController[] = [];
+    
     room.forEach((controller) => {
       try {
         controller.enqueue(message);
+        console.log(`Message sent to connection in room ${classId}`);
       } catch (error) {
-        room.delete(controller);
+        console.error(`Failed to send message to connection in room ${classId}:`, error);
+        disconnectedControllers.push(controller);
       }
+    });
+
+    // Clean up disconnected controllers
+    disconnectedControllers.forEach(controller => {
+      room.delete(controller);
+      connectionCount--;
     });
 
     if (room.size === 0) {
       classRooms.delete(classId);
+      console.log(`Room ${classId} deleted - no active connections`);
     }
+  } else {
+    console.log(`No room found for classId: ${classId}`);
   }
 }
