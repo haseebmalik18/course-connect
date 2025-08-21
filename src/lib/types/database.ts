@@ -1,4 +1,3 @@
-// Database Types based on Supabase schema
 
 export interface Class {
   class_id: string;
@@ -38,7 +37,23 @@ export interface Profile {
   updated_at?: string;
 }
 
-// Response types
+export interface Message {
+  message_id: string;
+  class_id: string;
+  user_id: string;
+  content: string;
+  message_type: 'text' | 'image' | 'file';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageWithUser extends Message {
+  user?: {
+    full_name?: string;
+    email?: string;
+  };
+}
+
 export interface ClassWithStats extends Class {
   document_count?: number;
   member_count?: number;

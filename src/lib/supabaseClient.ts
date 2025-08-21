@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Class, Document, Profile } from './types/database';
 
-// Database type definitions for Supabase
 export interface Database {
   public: {
     Tables: {
@@ -31,7 +30,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-// Create Supabase client with proper typing
 export const supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -39,5 +37,4 @@ export const supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKe
   },
 });
 
-// Export types for use in components
 export type { Class, Document, Profile } from './types/database';

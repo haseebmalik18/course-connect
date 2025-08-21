@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useCourse } from "@/hooks/useCourses";
 import { useAuth } from "@/hooks/useAuth";
+import { useWebSocketMessages } from "@/hooks/useWebSocketMessages";
 import DocumentUpload from "./DocumentUpload";
+import ChatMessage from "../chat/ChatMessage";
 
 interface Material {
   id: string;
@@ -35,7 +37,6 @@ interface Message {
   isCurrentUser: boolean;
 }
 
-// Sample data
 const sampleMaterials: Material[] = [
   {
     id: "1",
@@ -150,36 +151,6 @@ const samplePeople: Person[] = [
   }
 ];
 
-const sampleMessages: Message[] = [
-  {
-    id: "1",
-    sender: "Sarah Chen",
-    content: "Hey everyone! Just uploaded my notes from today's lecture.",
-    timestamp: "2:30 PM",
-    isCurrentUser: false
-  },
-  {
-    id: "2",
-    sender: "You",
-    content: "Thanks Sarah! These are really helpful.",
-    timestamp: "2:35 PM",
-    isCurrentUser: true
-  },
-  {
-    id: "3",
-    sender: "Michael Rodriguez",
-    content: "Does anyone have the practice problems from last week?",
-    timestamp: "3:15 PM",
-    isCurrentUser: false
-  },
-  {
-    id: "4",
-    sender: "Emily Johnson",
-    content: "I'll upload them in a few minutes!",
-    timestamp: "3:20 PM",
-    isCurrentUser: false
-  }
-];
 
 interface CourseDetailProps {
   classId: string;
@@ -193,11 +164,11 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
   const { user } = useAuth();
   const { course, loading: courseLoading, error: courseError } = useCourse(classId);
   const { documents, loading: documentsLoading, error: documentsError, uploadDocument } = useDocuments(classId);
+  const { messages, loading: messagesLoading, error: messagesError, connected: wsConnected, sendMessage, deleteMessage } = useWebSocketMessages(classId);
 
   const courseCode = course ? `${course.class_subject} ${course.class_number}` : "Loading...";
   const courseName = course ? course.college_name : "Loading...";
   
-  // Generate a color based on the course ID
   const colors = [
     "from-green-400 to-green-600",
     "from-blue-400 to-blue-600", 
@@ -216,8 +187,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
   };
 
   const handleDownload = (docPath: string, fileName: string) => {
-    // Use the downloadDocument function from useDocuments hook
-    // For now, we'll create a simple download link
     const link = document.createElement('a');
     link.href = docPath;
     link.download = fileName;
@@ -231,10 +200,19 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
     console.log("Messaging:", person.name);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (messageInput.trim()) {
-      console.log("Sending message:", messageInput);
-      setMessageInput("");
+      const success = await sendMessage(messageInput);
+      if (success) {
+        setMessageInput("");
+      }
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
@@ -276,7 +254,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -299,7 +276,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
         </div>
       </header>
 
-      {/* Tabs */}
       <div className="bg-white border-b border-gray-200 sticky top-16 z-30">
         <div className="px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
@@ -325,9 +301,7 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
         </div>
       </div>
 
-      {/* Content */}
       <main className="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
-        {/* Materials Tab */}
         {activeTab === "materials" && (
           <div>
             <div className="flex justify-between items-center mb-6">
@@ -348,7 +322,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
               </button>
             </div>
 
-            {/* Loading State */}
             {documentsLoading && (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -356,7 +329,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
               </div>
             )}
 
-            {/* Error State */}
             {documentsError && (
               <div className="text-center py-12">
                 <div className="text-red-500 mb-4">
@@ -369,7 +341,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
               </div>
             )}
 
-            {/* Documents Grid */}
             {!documentsLoading && !documentsError && (
               <>
                 {documents.length > 0 ? (
@@ -450,10 +421,8 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
           </div>
         )}
 
-        {/* People Tab */}
         {activeTab === "people" && (
           <div className="space-y-8">
-            {/* Mentors Section */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Mentors (Already Took This Course)
@@ -484,7 +453,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
               </div>
             </div>
 
-            {/* Study Buddies Section */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Study Buddies (Taking Now)
@@ -517,57 +485,71 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
           </div>
         )}
 
-        {/* Chat Tab */}
         {activeTab === "chat" && (
-          <div className="bg-white rounded-lg border border-gray-200 h-[600px] flex flex-col">
-            {/* Chat Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
+          <div className="bg-white rounded-xl border border-gray-200 h-[600px] flex flex-col shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
               <h2 className="text-lg font-semibold text-gray-900">Course Chat</h2>
-              <p className="text-sm text-gray-600">12 members online</p>
+              <p className="text-sm text-gray-600">
+                {messages.length} message{messages.length !== 1 ? 's' : ''}
+              </p>
             </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {sampleMessages.map(message => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.isCurrentUser ? "justify-end" : "justify-start"}`}
-                >
-                  <div className={`max-w-xs lg:max-w-md ${message.isCurrentUser ? "order-2" : ""}`}>
-                    {!message.isCurrentUser && (
-                      <p className="text-xs text-gray-600 mb-1">{message.sender}</p>
-                    )}
-                    <div
-                      className={`px-4 py-2 rounded-lg ${
-                        message.isCurrentUser
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {message.timestamp}
-                    </p>
+            <div className="flex-1 overflow-y-auto p-4">
+              {messagesLoading && (
+                <div className="flex justify-center items-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              )}
+
+              {messagesError && (
+                <div className="flex justify-center items-center h-full">
+                  <div className="text-center">
+                    <svg className="w-12 h-12 text-red-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-red-600 font-medium">Error loading messages</p>
+                    <p className="text-gray-600 text-sm">{messagesError}</p>
                   </div>
                 </div>
+              )}
+
+              {!messagesLoading && !messagesError && messages.length === 0 && (
+                <div className="flex justify-center items-center h-full">
+                  <div className="text-center">
+                    <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No messages yet</h3>
+                    <p className="text-gray-600">Start the conversation by sending the first message!</p>
+                  </div>
+                </div>
+              )}
+
+              {!messagesLoading && !messagesError && messages.map(message => (
+                <ChatMessage
+                  key={message.message_id}
+                  message={message}
+                  isCurrentUser={message.user_id === user?.id}
+                  onDelete={deleteMessage}
+                />
               ))}
             </div>
 
-            {/* Message Input */}
-            <div className="px-6 py-4 border-t border-gray-200">
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <div className="flex space-x-3">
                 <input
                   type="text"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                  onKeyDown={handleKeyPress}
                   placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={messagesLoading}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 bg-white"
                 />
                 <button
                   onClick={handleSendMessage}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={!messageInput.trim() || messagesLoading}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -579,7 +561,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
         )}
       </main>
 
-      {/* Document Upload Modal */}
       <DocumentUpload
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
