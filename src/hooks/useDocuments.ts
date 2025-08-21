@@ -72,9 +72,34 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         throw new Error('You must be logged in to upload documents');
       }
 
+      console.log('Upload Debug Info:', {
+        userId: user.id,
+        classId: classId,
+        fileName: file.name,
+        fileSize: file.size
+      });
+
+      // Verify user has access to this class
+      const { data: classData, error: classError } = await supabaseClient
+        .from('class')
+        .select('created_by')
+        .eq('class_id', classId)
+        .single();
+
+      if (classError) {
+        console.error('Class access error:', classError);
+        throw new Error('Cannot access this class');
+      }
+
+      if (classData.created_by !== user.id) {
+        throw new Error('You do not have permission to upload to this class');
+      }
+
       // Create a unique file path
       const fileExt = file.name.split('.').pop();
       const fileName = `${classId}/${user.id}/${Date.now()}.${fileExt}`;
+
+      console.log('Uploading to storage path:', fileName);
 
       // Upload file to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
@@ -85,12 +110,15 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         });
 
       if (uploadError) {
+        console.error('Storage upload error:', uploadError);
         // If bucket doesn't exist, try creating it first
         if (uploadError.message.includes('bucket')) {
           console.warn('Storage bucket may not exist. Please create a "documents" bucket in Supabase.');
         }
         throw uploadError;
       }
+
+      console.log('Storage upload successful:', uploadData);
 
       // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabaseClient.storage
@@ -99,6 +127,13 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       // Determine document type from file extension
       const detectedType = docType || getDocumentType(file.name);
+
+      console.log('Creating database record:', {
+        class_id: classId,
+        doc_path: publicUrl,
+        doc_type: detectedType,
+        created_by: user.id,
+      });
 
       // Create document record in database
       const { data: docData, error: docError } = await supabaseClient
@@ -112,7 +147,12 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         .select()
         .single();
 
-      if (docError) throw docError;
+      if (docError) {
+        console.error('Database insert error:', docError);
+        throw docError;
+      }
+
+      console.log('Document created successfully:', docData);
 
       // Refetch documents to update the list
       await fetchDocuments();

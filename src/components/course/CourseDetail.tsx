@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDocuments } from "@/hooks/useDocuments";
+import { useCourse } from "@/hooks/useCourses";
+import { useAuth } from "@/hooks/useAuth";
+import DocumentUpload from "./DocumentUpload";
 
 interface Material {
   id: string;
@@ -178,27 +182,49 @@ const sampleMessages: Message[] = [
 ];
 
 interface CourseDetailProps {
-  courseCode?: string;
-  courseName?: string;
-  courseColor?: string;
+  classId: string;
 }
 
-export default function CourseDetail({ 
-  courseCode = "BIO 201", 
-  courseName = "Principles of Biology",
-  courseColor = "from-green-400 to-green-600"
-}: CourseDetailProps) {
+export default function CourseDetail({ classId }: CourseDetailProps) {
   const [activeTab, setActiveTab] = useState<"materials" | "people" | "chat">("materials");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const router = useRouter();
+  const { user } = useAuth();
+  const { course, loading: courseLoading, error: courseError } = useCourse(classId);
+  const { documents, loading: documentsLoading, error: documentsError, uploadDocument } = useDocuments(classId);
+
+  const courseCode = course ? `${course.class_subject} ${course.class_number}` : "Loading...";
+  const courseName = course ? course.college_name : "Loading...";
+  
+  // Generate a color based on the course ID
+  const colors = [
+    "from-green-400 to-green-600",
+    "from-blue-400 to-blue-600", 
+    "from-purple-400 to-purple-600",
+    "from-orange-400 to-orange-600",
+    "from-pink-400 to-pink-600",
+    "from-red-400 to-red-600",
+    "from-yellow-400 to-yellow-600",
+    "from-indigo-400 to-indigo-600"
+  ];
+  const colorIndex = parseInt(classId.replace(/\D/g, '').slice(0, 2) || '0') % colors.length;
+  const courseColor = colors[colorIndex];
 
   const handleBack = () => {
     router.push("/dashboard");
   };
 
-  const handleDownload = (material: Material) => {
-    console.log("Downloading:", material.name);
+  const handleDownload = (docPath: string, fileName: string) => {
+    // Use the downloadDocument function from useDocuments hook
+    // For now, we'll create a simple download link
+    const link = document.createElement('a');
+    link.href = docPath;
+    link.download = fileName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleMessage = (person: Person) => {
@@ -213,8 +239,21 @@ export default function CourseDetail({
   };
 
   const handleUpload = () => {
-    console.log("Upload clicked");
     setShowUploadModal(true);
+  };
+
+  const handleUploadSubmit = async (file: File, title?: string, description?: string): Promise<boolean> => {
+    try {
+      const result = await uploadDocument(file, classId);
+      if (result) {
+        setShowUploadModal(false);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Upload failed:', error);
+      return false;
+    }
   };
 
   const getFileIcon = (type: Material["type"]) => {
@@ -292,10 +331,15 @@ export default function CourseDetail({
         {activeTab === "materials" && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Course Materials</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Course Materials</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {documents.length} document{documents.length !== 1 ? 's' : ''} uploaded
+                </p>
+              </div>
               <button
                 onClick={handleUpload}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -304,32 +348,105 @@ export default function CourseDetail({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sampleMaterials.map(material => (
-                <div
-                  key={material.id}
-                  className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="text-3xl">{getFileIcon(material.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-gray-900 truncate">{material.name}</h3>
-                      <p className="text-xs text-gray-500 mt-1">{material.size} • {material.uploadedAt}</p>
-                      <p className="text-xs text-gray-600 mt-1">by {material.uploadedBy}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDownload(material)}
-                    className="mt-3 w-full flex items-center justify-center space-x-1 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors text-sm text-gray-700"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span>Download</span>
-                  </button>
+            {/* Loading State */}
+            {documentsLoading && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading documents...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {documentsError && (
+              <div className="text-center py-12">
+                <div className="text-red-500 mb-4">
+                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                 </div>
-              ))}
-            </div>
+                <p className="text-red-600 font-medium">Error loading documents</p>
+                <p className="text-gray-600 text-sm">{documentsError}</p>
+              </div>
+            )}
+
+            {/* Documents Grid */}
+            {!documentsLoading && !documentsError && (
+              <>
+                {documents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {documents.map(doc => {
+                      const fileName = doc.doc_path.split('/').pop() || 'Unknown file';
+                      const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+                      
+                      const getDocIcon = (docType: string) => {
+                        const iconMap: { [key: string]: string } = {
+                          pdf: '📄',
+                          document: '📝',
+                          presentation: '📊',
+                          spreadsheet: '📈',
+                          image: '🖼️',
+                          video: '🎥',
+                          archive: '🗜️',
+                          other: '📎'
+                        };
+                        return iconMap[docType] || '📎';
+                      };
+
+                      return (
+                        <div
+                          key={doc.doc_id}
+                          className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all hover:-translate-y-0.5"
+                        >
+                          <div className="flex items-start space-x-3 mb-4">
+                            <div className="text-3xl">{getDocIcon(doc.doc_type)}</div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-semibold text-gray-900 truncate mb-1">
+                                {fileName.replace(/\.[^/.]+$/, "")}
+                              </h3>
+                              <p className="text-xs text-gray-500">
+                                {new Date(doc.created_at).toLocaleDateString()} • {fileExt.toUpperCase()}
+                              </p>
+                              <p className="text-xs text-blue-600 mt-1">
+                                by {doc.user?.full_name || 'Anonymous'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleDownload(doc.doc_path, fileName)}
+                            className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-600 rounded-lg transition-all text-sm font-medium"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Download</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-300 mb-4">
+                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No documents yet</h3>
+                    <p className="text-gray-600 mb-4">Get started by uploading your first study material.</p>
+                    <button
+                      onClick={handleUpload}
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Upload First Document
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -462,63 +579,13 @@ export default function CourseDetail({
         )}
       </main>
 
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload Material</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  File Title
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., Chapter 5 Notes"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Brief description of the material..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Choose File
-                </label>
-                <input
-                  type="file"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setShowUploadModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  console.log("Uploading file...");
-                  setShowUploadModal(false);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Upload
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Document Upload Modal */}
+      <DocumentUpload
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUpload={handleUploadSubmit}
+        loading={documentsLoading}
+      />
     </div>
   );
 }
