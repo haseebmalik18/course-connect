@@ -12,7 +12,6 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
   const [emailError, setEmailError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,8 +44,8 @@ export default function Register() {
         email: email.toLowerCase(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+          emailRedirectTo: undefined
+        }
       });
 
       if (signUpError) {
@@ -54,9 +53,12 @@ export default function Register() {
         throw new Error(signUpError.message);
       }
 
-      if (data.user) {
+      if (data.user && data.session) {
+        console.log("User created and logged in successfully:", data.user);
+        window.location.href = "/dashboard";
+      } else if (data.user) {
         console.log("User created successfully:", data.user);
-        setSuccess(true);
+        window.location.href = "/dashboard";
       } else {
         throw new Error("No user data returned");
       }
@@ -68,37 +70,6 @@ export default function Register() {
     }
   };
 
-  if (success) {
-    return (
-      <div className="text-center animate-in fade-in duration-700">
-        <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-lg mb-6 animate-in slide-in-from-top-2 duration-500 shadow-sm">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-              <svg
-                className="w-4 h-4 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-            <span className="font-medium">Registration successful!</span>
-          </div>
-          <p>Please check your email for the verification link.</p>
-        </div>
-        <p className="text-sm text-gray-600 animate-in fade-in duration-700 delay-300">
-          Click the link in your email to verify your account and access the
-          dashboard.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

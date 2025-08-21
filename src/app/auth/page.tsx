@@ -9,7 +9,6 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
-      {/* Premium Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-white to-blue-50/20 pointer-events-none"></div>
       <div className="absolute top-0 right-0 w-96 h-96 bg-blue-100/20 rounded-full blur-3xl -translate-y-48 translate-x-48 pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-200/15 rounded-full blur-3xl translate-y-40 -translate-x-40 pointer-events-none"></div>
@@ -27,7 +26,6 @@ export default function AuthPage() {
 
           <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-xl animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
             <div className="relative flex mb-8 bg-gray-50/80 rounded-2xl p-1.5 backdrop-blur-sm">
-              {/* Sliding indicator */}
               <div
                 className="absolute top-1.5 bottom-1.5 rounded-xl transition-all duration-500 ease-out shadow-lg bg-gradient-to-r from-blue-600 to-blue-700"
                 style={{
