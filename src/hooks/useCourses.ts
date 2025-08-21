@@ -19,24 +19,24 @@ export function useCourses(userId?: string): UseCoursesReturn {
   const [error, setError] = useState<string | null>(null);
 
   const fetchCourses = useCallback(async () => {
+    if (!userId) {
+      setLoading(false);
+      setCourses([]);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      let query = supabaseClient
+      const { data, error: fetchError } = await supabaseClient
         .from('class')
         .select(`
           *,
           document:document(count)
         `)
+        .eq('created_by', userId)
         .order('created_at', { ascending: false });
-
-      // Filter by user if userId is provided
-      if (userId) {
-        query = query.eq('created_by', userId);
-      }
-
-      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
 
