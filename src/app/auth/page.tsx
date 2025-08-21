@@ -1,63 +1,60 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Login from '@/components/auth/Login';
-import Register from '@/components/auth/Register';
+import { useState } from "react";
+import Login from "@/components/auth/Login";
+import Register from "@/components/auth/Register";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-8"
-      style={{ backgroundColor: '#f5f5f5' }}
-    >
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 
-            className="text-4xl font-bold mb-2"
-            style={{ color: '#1a73e8' }}
-          >
+        <div className="text-center mb-10">
+          <h1 className="text-5xl font-bold mb-3 bg-clip-text text-transparent" style={{
+            backgroundImage: `linear-gradient(to right, rgb(26, 115, 232), rgb(21, 101, 208))`
+          }}>
             CUNYConnect
           </h1>
-          <p style={{ color: '#5f6368' }}>
+          <p className="text-gray-600 text-lg font-medium">
             Connect with fellow CUNY students
           </p>
+          <div className="w-20 h-1 mx-auto mt-4 rounded-full" style={{
+            backgroundColor: "rgb(26, 115, 232)"
+          }}></div>
         </div>
 
-        <div 
-          className="p-8 rounded-lg shadow-lg"
-          style={{ backgroundColor: 'white' }}
-        >
-          <div className="flex mb-6">
-            <button
-              className={`flex-1 py-2 text-center font-medium border-b-2 transition-colors ${
-                isLogin ? '' : 'opacity-60'
-              }`}
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-lg">
+          <div className="relative flex mb-8 bg-gray-100 rounded-xl p-1">
+            {/* Sliding indicator */}
+            <div
+              className="absolute top-1 bottom-1 rounded-lg transition-all duration-300 ease-out shadow-md"
               style={{
-                borderColor: isLogin ? '#1a73e8' : 'transparent',
-                color: isLogin ? '#202124' : '#5f6368'
+                backgroundColor: "rgb(26, 115, 232)",
+                width: "calc(50% - 4px)",
+                left: isLogin ? "4px" : "calc(50% + 0px)",
               }}
+            ></div>
+
+            <button
+              className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-300 ${
+                isLogin ? "text-white" : "text-gray-500 hover:text-gray-700"
+              }`}
               onClick={() => setIsLogin(true)}
             >
-              Log In
+              Sign In
             </button>
             <button
-              className={`flex-1 py-2 text-center font-medium border-b-2 transition-colors ${
-                !isLogin ? '' : 'opacity-60'
+              className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-300 ${
+                !isLogin ? "text-white" : "text-gray-500 hover:text-gray-700"
               }`}
-              style={{
-                borderColor: !isLogin ? '#1a73e8' : 'transparent',
-                color: !isLogin ? '#202124' : '#5f6368'
-              }}
               onClick={() => setIsLogin(false)}
             >
               Sign Up
             </button>
           </div>
 
-          {/* Render the appropriate component based on the selected tab */}
-          <div className="mt-6">
+          <div className="min-h-[350px]">
             {isLogin ? <Login /> : <Register />}
           </div>
         </div>
