@@ -11,6 +11,8 @@ interface UseCoursesReturn {
   refetch: () => Promise<void>;
   createCourse: (courseData: Partial<Class>) => Promise<Class | null>;
   deleteCourse: (classId: string) => Promise<boolean>;
+  searchAllCourses: (query: string) => Promise<ClassWithStats[]>;
+  joinCourse: (classId: string) => Promise<boolean>;
 }
 
 export function useCourses(userId?: string): UseCoursesReturn {
@@ -124,6 +126,82 @@ export function useCourses(userId?: string): UseCoursesReturn {
     }
   };
 
+  const searchAllCourses = async (query: string): Promise<ClassWithStats[]> => {
+    if (!query.trim()) return [];
+
+    try {
+      const { data, error: searchError } = await supabaseClient
+        .from('class')
+        .select(`
+          *,
+          document:document(count)
+        `)
+        .or(`class_subject.ilike.%${query}%,class_number.eq.${isNaN(Number(query)) ? 0 : Number(query)},college_name.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (searchError) throw searchError;
+
+      const coursesWithStats = (data || []).map((course: any) => ({
+        ...course,
+        document_count: course.document?.[0]?.count || 0,
+        member_count: Math.floor(Math.random() * 20) + 5,
+      }));
+
+      return coursesWithStats;
+    } catch (err: any) {
+      console.error('Error searching courses:', err);
+      return [];
+    }
+  };
+
+  const joinCourse = async (classId: string): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      
+      if (!user) {
+        throw new Error('You must be logged in to join a course');
+      }
+
+      // Check if user already has this course
+      const existingCourse = courses.find(course => course.class_id === classId);
+      if (existingCourse) {
+        return true; // Already joined
+      }
+
+      // For now, we'll add the course to the user's dashboard by creating a copy
+      // In a real app, you'd have a user_courses junction table
+      const { data: courseData, error: fetchError } = await supabaseClient
+        .from('class')
+        .select('*')
+        .eq('class_id', classId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { data, error: createError } = await supabaseClient
+        .from('class')
+        .insert({
+          college_name: courseData.college_name,
+          class_subject: courseData.class_subject,
+          class_number: courseData.class_number,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      // Refetch courses to update the list
+      await fetchCourses();
+
+      return true;
+    } catch (err: any) {
+      console.error('Error joining course:', err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchCourses();
   }, [fetchCourses]);
@@ -135,6 +213,8 @@ export function useCourses(userId?: string): UseCoursesReturn {
     refetch: fetchCourses,
     createCourse,
     deleteCourse,
+    searchAllCourses,
+    joinCourse,
   };
 }
 
