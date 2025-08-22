@@ -94,8 +94,8 @@ export function useCourses(userId?: string): UseCoursesReturn {
         throw new Error('You must be logged in to create a course');
       }
 
-      const { data, error: createError } = await supabaseClient
-        .from('class')
+      const { data, error: createError } = await (supabaseClient
+        .from('class') as any)
         .insert({
           college_name: courseData.college_name || '',
           class_subject: courseData.class_subject || '',
