@@ -108,7 +108,7 @@ The platform automatically validates CUNY email addresses and extracts user name
 - **Course Privacy**: Users can only see content for courses they're enrolled in
 - **Secure File Sharing**: Documents are protected and only accessible to course members
 
-## 🌐 Platform Access
+## 🌐 Platform Accessu
 
 ### Web Application
 
