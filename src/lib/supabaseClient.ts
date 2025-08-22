@@ -6,7 +6,10 @@ export interface Database {
     Tables: {
       class: {
         Row: Class;
-        Insert: Omit<Class, 'class_id' | 'created_at'>;
+        Insert: Omit<Class, 'class_id' | 'created_at'> & {
+          doc_count?: number;
+          student_count?: number;
+        };
         Update: Partial<Omit<Class, 'class_id' | 'created_at'>>;
       };
       document: {

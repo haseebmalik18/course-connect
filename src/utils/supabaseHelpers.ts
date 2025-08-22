@@ -207,7 +207,7 @@ export async function getDocumentsByClass(
   try {
     const { data, error } = await supabaseClient
       .from('document')
-      .select('doc_id, class_id, doc_path, doc_type, created_by, created_at')
+      .select('doc_id, class_id, doc_path, doc_type, doc_name, created_by, created_at')
       .eq('class_id', classId)
       .order('created_at', { ascending: false });
 
