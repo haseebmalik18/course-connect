@@ -264,7 +264,7 @@ export async function POST(request: NextRequest) {
     console.log("Access check:", {
       isCreator,
       isMember,
-      membershipRole: membership?.role,
+      membershipRole: membership?.role || null,
       courseCreator: (courseData as any)?.created_by?.slice(0, 8),
       userId: userId?.slice(0, 8),
     });
