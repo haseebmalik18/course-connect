@@ -146,8 +146,8 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
       console.log('Document created successfully:', docData);
 
       try {
-        const { data: currentClass, error: fetchError } = await supabaseClient
-          .from('class')
+        const { data: currentClass, error: fetchError } = await (supabaseClient
+          .from('class') as any)
           .select('doc_count')
           .eq('class_id', classId)
           .single();
@@ -156,8 +156,8 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
           const currentCount = currentClass.doc_count || 0;
           const newCount = currentCount + 1;
           
-          const { error: updateError } = await supabaseClient
-            .from('class')
+          const { error: updateError } = await (supabaseClient
+            .from('class') as any)
             .update({ doc_count: newCount })
             .eq('class_id', classId);
 
@@ -183,8 +183,8 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
     setError(null);
 
     try {
-        const { data: doc, error: fetchError } = await supabaseClient
-        .from('document')
+        const { data: doc, error: fetchError } = await (supabaseClient
+        .from('document') as any)
         .select('doc_path, class_id')
         .eq('doc_id', docId)
         .single();
@@ -204,8 +204,8 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         }
       }
 
-        const { error: deleteError } = await supabaseClient
-        .from('document')
+        const { error: deleteError } = await (supabaseClient
+        .from('document') as any)
         .delete()
         .eq('doc_id', docId);
 
@@ -214,8 +214,8 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
       try {
           const classId = doc?.class_id;
         if (classId) {
-            const { data: currentClass, error: fetchError } = await supabaseClient
-            .from('class')
+            const { data: currentClass, error: fetchError } = await (supabaseClient
+            .from('class') as any)
             .select('doc_count')
             .eq('class_id', classId)
             .single();
@@ -224,8 +224,8 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
             const currentCount = currentClass.doc_count || 0;
             const newCount = Math.max(0, currentCount - 1);
             
-            const { error: updateError } = await supabaseClient
-              .from('class')
+            const { error: updateError } = await (supabaseClient
+              .from('class') as any)
               .update({ doc_count: newCount })
               .eq('class_id', classId);
 
