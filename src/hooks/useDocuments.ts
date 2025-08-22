@@ -126,8 +126,8 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         created_by: user.id,
       });
 
-      const { data: docData, error: docError } = await supabaseClient
-        .from('document')
+      const { data: docData, error: docError } = await (supabaseClient
+        .from('document') as any)
         .insert({
           class_id: classId,
           doc_path: publicUrl,
