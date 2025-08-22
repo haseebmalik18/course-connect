@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { validateCunyEmail, getCunyEmailErrorMessage } from "@/lib/validation";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -41,19 +42,24 @@ export default function Login() {
       if (data.user) {
         console.log("User signed in successfully:", data.user);
         router.push("/dashboard");
+        // Don't set loading to false on success - let it stay true during navigation
       } else {
         throw new Error("No user data returned");
       }
     } catch (err) {
       console.error("Login error:", err);
       setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
+      setLoading(false); // Only set loading to false on error
     }
+    // Remove the finally block - don't set loading to false on success
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <>
+      {/* Full-screen loading overlay */}
+      {loading && <LoadingSpinner message="Signing in..." size="lg" />}
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm animate-in slide-in-from-top duration-300">
           {error}
@@ -146,5 +152,6 @@ export default function Login() {
         </span>
       </button>
     </form>
+    </>
   );
 }
