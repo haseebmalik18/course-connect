@@ -405,8 +405,8 @@ export function useCourse(classId: string) {
       setError(null);
 
       try {
-        const { data, error: fetchError } = await supabaseClient
-          .from('class')
+        const { data, error: fetchError } = await (supabaseClient
+          .from('class') as any)
           .select('*')
           .eq('class_id', classId)
           .single();
