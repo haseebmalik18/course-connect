@@ -47,8 +47,8 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      const { data, error: fetchError } = await (supabaseClient
-        .from("messages") as any)
+      const { data, error: fetchError } = await supabaseClient
+        .from("messages")
         .select("*")
         .eq("class_id", classId)
         .order("created_at", { ascending: true })
@@ -68,7 +68,8 @@ export function useWebSocketMessages(
 
       setMessages(messagesWithUsers);
       if (messagesWithUsers.length > 0) {
-        lastMessageIdRef.current = messagesWithUsers[messagesWithUsers.length - 1].message_id;
+        lastMessageIdRef.current =
+          messagesWithUsers[messagesWithUsers.length - 1].message_id;
       }
     } catch (err: unknown) {
       const errorMessage =
@@ -87,14 +88,14 @@ export function useWebSocketMessages(
     }
 
     console.log(`Setting up SSE for class ${classId}, user ${user.id}`);
-    
+
     fetchMessages();
 
     const eventSource = new EventSource(`/api/messages?classId=${classId}`);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      console.log('SSE connection opened');
+      console.log("SSE connection opened");
       setConnected(true);
       setError(null);
     };
@@ -102,47 +103,56 @@ export function useWebSocketMessages(
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
-        if (data.type === 'initial') {
-          console.log('Received initial messages:', data.messages);
+
+        if (data.type === "initial") {
+          console.log("Received initial messages:", data.messages);
           setMessages(data.messages);
           if (data.messages.length > 0) {
-            lastMessageIdRef.current = data.messages[data.messages.length - 1].message_id;
+            lastMessageIdRef.current =
+              data.messages[data.messages.length - 1].message_id;
           }
-        } else if (data.type === 'new') {
-          console.log('New message from SSE:', data.message);
+        } else if (data.type === "new") {
+          console.log("New message from SSE:", data.message);
           const newMessage = data.message;
-          
+
           if (lastMessageIdRef.current !== newMessage.message_id) {
             setMessages((prev) => {
-              const exists = prev.some((msg) => msg.message_id === newMessage.message_id);
+              const exists = prev.some(
+                (msg) => msg.message_id === newMessage.message_id
+              );
               if (exists) {
-                console.log('Duplicate message detected, skipping:', newMessage.message_id);
+                console.log(
+                  "Duplicate message detected, skipping:",
+                  newMessage.message_id
+                );
                 return prev;
               }
-              
-              console.log('Adding new message to state:', newMessage.message_id);
+
+              console.log(
+                "Adding new message to state:",
+                newMessage.message_id
+              );
               lastMessageIdRef.current = newMessage.message_id;
               return [...prev, newMessage];
             });
           }
-        } else if (data.type === 'error') {
-          console.error('SSE error:', data.error);
+        } else if (data.type === "error") {
+          console.error("SSE error:", data.error);
           setError(data.error);
         }
       } catch (err) {
-        console.error('Error parsing SSE message:', err);
+        console.error("Error parsing SSE message:", err);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error);
+      console.error("SSE connection error:", error);
       setConnected(false);
-      setError('Connection lost');
+      setError("Connection lost");
     };
 
     return () => {
-      console.log('Cleaning up SSE connection');
+      console.log("Cleaning up SSE connection");
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -157,10 +167,10 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      const response = await fetch('/api/messages', {
-        method: 'POST',
+      const response = await fetch("/api/messages", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           classId,
@@ -171,7 +181,7 @@ export function useWebSocketMessages(
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to send message');
+        throw new Error(error.error || "Failed to send message");
       }
 
       return true;
@@ -190,13 +200,12 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      const { error: deleteError } = await (supabaseClient
-        .from("messages") as any)
+      const { error: deleteError } = await supabaseClient
+        .from("messages")
         .delete()
         .eq("message_id", messageId);
 
       if (deleteError) throw deleteError;
-
 
       return true;
     } catch (err: unknown) {

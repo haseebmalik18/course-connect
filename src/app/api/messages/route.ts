@@ -43,9 +43,8 @@ export async function GET(request: NextRequest) {
 
       const setupSubscription = async () => {
         try {
-          const { data: initialMessages, error: fetchError } = await (
-            supabase.from("messages") as any
-          )
+          const { data: initialMessages, error: fetchError } = await supabase
+            .from("messages")
             .select("*")
             .eq("class_id", classId)
             .order("created_at", { ascending: true })
@@ -77,9 +76,8 @@ export async function GET(request: NextRequest) {
 
           const pollMessages = async () => {
             try {
-              const { data: messages, error: pollError } = await (
-                supabase.from("messages") as any
-              )
+              const { data: messages, error: pollError } = await supabase
+                .from("messages")
                 .select("*")
                 .eq("class_id", classId)
                 .gt("created_at", lastMessageTime)
@@ -139,7 +137,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  console.log('=== POST /api/messages called ===');
+  console.log("=== POST /api/messages called ===");
   try {
     if (!supabaseServerClient) {
       console.error(
@@ -156,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { classId, content, userId } = body;
-    console.log('Request body:', { classId, content, userId });
+    console.log("Request body:", { classId, content, userId });
 
     console.log("POST /api/messages received:", {
       classId,
@@ -176,17 +174,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // First, ensure the user has a profile (required by foreign key constraint)
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single();
+
+    if (profileError && profileError.code === "PGRST116") {
+      // Profile doesn't exist, get user info from auth and create profile
+      const { data: authUser, error: authError } =
+        await supabase.auth.admin.getUserById(userId);
+
+      if (authError) {
+        console.error("Error fetching auth user:", authError);
+        return Response.json(
+          { error: "User not found in auth system" },
+          { status: 404 }
+        );
+      }
+
+      const { error: createProfileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: userId,
+          email: authUser.user?.email || "unknown@email.com",
+          full_name: authUser.user?.user_metadata?.full_name || "Unknown User",
+        });
+
+      if (createProfileError) {
+        console.error("Error creating profile:", createProfileError);
+        return Response.json(
+          { error: "Failed to create user profile" },
+          { status: 500 }
+        );
+      }
+      console.log("Created profile for user:", userId);
+    } else if (profileError) {
+      console.error("Error checking profile:", profileError);
+      return Response.json(
+        { error: "Database error checking user profile" },
+        { status: 500 }
+      );
+    }
+
     // Check user membership with better error handling
-    const { data: membership, error: membershipError } = await (
-      supabase.from("user_courses") as any
-    )
+    const { data: membership, error: membershipError } = await supabase
+      .from("user_courses")
       .select("role")
       .eq("user_id", userId)
       .eq("class_id", classId)
       .single();
 
+    console.log("Membership check result:", { membership, membershipError });
+
     if (membershipError && membershipError.code !== "PGRST116") {
       console.error("Error checking membership:", membershipError);
+      console.error("Membership error details:", {
+        code: membershipError.code,
+        message: membershipError.message,
+        details: membershipError.details,
+        hint: membershipError.hint,
+      });
       return Response.json(
         { error: "Database error checking membership" },
         { status: 500 }
@@ -194,9 +243,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is course creator
-    const { data: courseData, error: courseError } = await (
-      supabase.from("class") as any
-    )
+    const { data: courseData, error: courseError } = await supabase
+      .from("class")
       .select("created_by")
       .eq("class_id", classId)
       .single();
@@ -215,16 +263,26 @@ export async function POST(request: NextRequest) {
     console.log("Access check:", {
       isCreator,
       isMember,
+      membershipRole: membership?.role,
+      courseCreator: courseData?.created_by?.slice(0, 8),
       userId: userId?.slice(0, 8),
     });
 
-    // Temporarily bypass membership check for debugging
-    // if (!isCreator && !isMember) {
-    //   return Response.json({ error: 'You are not a member of this course' }, { status: 403 });
-    // }
+    // Allow course creators to send messages even if not explicitly enrolled
+    if (!isCreator && !isMember) {
+      console.log("User not authorized - not creator or member");
+      return Response.json(
+        {
+          error:
+            "You are not a member of this course. Please join the course first.",
+        },
+        { status: 403 }
+      );
+    }
 
     // Insert message with better error handling
-    const { data, error } = await (supabase.from("messages") as any)
+    const { data, error } = await supabase
+      .from("messages")
       .insert({
         class_id: classId,
         user_id: userId,
@@ -234,7 +292,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    console.log('Message insert result:', { data, error });
+    console.log("Message insert result:", { data, error });
 
     if (error) {
       console.error("Error inserting message:", error);
