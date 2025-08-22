@@ -337,8 +337,8 @@ export function useCourses(userId?: string): UseCoursesReturn {
             let joinedAt = null;
             
             if (userId) {
-              const { data: userEnrollment, error: enrollmentError } = await supabaseClient
-                .from('user_courses')
+              const { data: userEnrollment, error: enrollmentError } = await (supabaseClient
+                .from('user_courses') as any)
                 .select('role, joined_at')
                 .eq('class_id', course.class_id)
                 .eq('user_id', userId)
