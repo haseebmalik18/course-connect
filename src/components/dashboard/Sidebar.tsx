@@ -6,6 +6,8 @@ interface SidebarProps {
   isMobileMenuOpen: boolean;
   activeNav: string;
   onNavChange: (navId: string) => void;
+  onCollegeSelect: (collegeName: string) => void;
+  selectedCollege?: string;
 }
 
 const CUNY_COLLEGES = [
@@ -15,15 +17,21 @@ const CUNY_COLLEGES = [
   "Hunter College",
   "John Jay College",
   "Lehman College",
-  "Medgar Evers College",
-  "New York City College of Technology",
   "Queens College",
-  "Staten Island College",
+  "College of Staten Island",
   "York College",
-  "Graduate School and University Center"
+  "NYC College of Technology",
+  "Medgar Evers College",
+  "Bronx Community College",
+  "Borough of Manhattan Community College",
+  "Guttman Community College",
+  "Hostos Community College",
+  "Kingsborough Community College",
+  "LaGuardia Community College",
+  "Queensborough Community College"
 ];
 
-export default function Sidebar({ isMobileMenuOpen, activeNav, onNavChange }: SidebarProps) {
+export default function Sidebar({ isMobileMenuOpen, activeNav, onNavChange, onCollegeSelect, selectedCollege }: SidebarProps) {
   const [isCollegesOpen, setIsCollegesOpen] = useState(false);
 
   const navItems = [
@@ -43,12 +51,14 @@ export default function Sidebar({ isMobileMenuOpen, activeNav, onNavChange }: Si
 
   const handleSpecificCollegeClick = (collegeName: string) => {
     console.log(`Clicked on ${collegeName}`);
-    // TODO: Implement college-specific course viewing
+    onCollegeSelect(collegeName);
+    setIsCollegesOpen(false);
   };
 
   return (
     <aside className={`${isMobileMenuOpen ? 'block' : 'hidden'} lg:block w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)] fixed lg:sticky top-16 z-30`}>
       <nav className="p-4 space-y-1">
+
         {navItems.map((item) => (
           <div key={item.id}>
             <button
@@ -76,7 +86,11 @@ export default function Sidebar({ isMobileMenuOpen, activeNav, onNavChange }: Si
                   <button
                     key={college}
                     onClick={() => handleSpecificCollegeClick(college)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 rounded transition-colors"
+                    className={`w-full text-left px-4 py-2 text-sm rounded transition-colors ${
+                      selectedCollege === college
+                        ? "bg-blue-100 text-blue-700 font-medium border border-blue-200"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                    }`}
                   >
                     {college}
                   </button>
@@ -88,4 +102,4 @@ export default function Sidebar({ isMobileMenuOpen, activeNav, onNavChange }: Si
       </nav>
     </aside>
   );
-} 
+}
