@@ -32,7 +32,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
     setError(null);
 
     try {
-      // Fetch courses user has joined or created via junction table
       const { data, error: fetchError } = await supabaseClient
         .from('class')
         .select(`
@@ -44,11 +43,9 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (fetchError) throw fetchError;
 
-      // For each course, get the document count separately
       const coursesWithStats = await Promise.all(
         (data || []).map(async (course: any) => {
           try {
-            // Get document count for this course
             const { count: docCount, error: countError } = await supabaseClient
               .from('document')
               .select('*', { count: 'exact', head: true })
@@ -61,7 +58,7 @@ export function useCourses(userId?: string): UseCoursesReturn {
             return {
               ...course,
               document_count: docCount || 0,
-              member_count: course.student_count || 0, // Use actual student_count from database
+              member_count: course.student_count || 0,
               user_role: course.user_courses[0]?.role || 'student',
               joined_at: course.user_courses[0]?.joined_at,
             };
@@ -91,7 +88,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
     setError(null);
 
     try {
-      // Get current user
       const { data: { user } } = await supabaseClient.auth.getUser();
       
       if (!user) {
@@ -113,7 +109,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (createError) throw createError;
 
-      // Add creator to user_courses junction table with 'owner' role
       const { error: joinError } = await supabaseClient
         .from('user_courses')
         .insert({
@@ -124,10 +119,8 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (joinError) {
         console.warn('Error adding creator to user_courses:', joinError);
-        // Don't fail the whole operation, just log the warning
       }
 
-      // Refetch courses to update the list
       await fetchCourses();
 
       return data;
@@ -142,7 +135,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
     setError(null);
 
     try {
-      // First, delete all documents associated with this course
       const { error: deleteDocsError } = await supabaseClient
         .from('document')
         .delete()
@@ -152,7 +144,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
         console.warn('Error deleting course documents:', deleteDocsError);
       }
 
-      // Then delete the course itself
       const { error: deleteError } = await supabaseClient
         .from('class')
         .delete()
@@ -160,7 +151,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (deleteError) throw deleteError;
 
-      // Update local state
       setCourses(prev => prev.filter(course => course.class_id !== classId));
 
       return true;
@@ -175,20 +165,43 @@ export function useCourses(userId?: string): UseCoursesReturn {
     if (!query.trim()) return [];
 
     try {
-      const { data, error: searchError } = await supabaseClient
-        .from('class')
-        .select('*')
-        .or(`class_subject.ilike.%${query}%,class_number.eq.${isNaN(Number(query)) ? 0 : Number(query)},college_name.ilike.%${query}%`)
+      const words = query.trim().split(/\s+/);
+      let searchQuery = supabaseClient.from('class').select('*');
+
+      if (words.length === 1) {
+        const word = words[0];
+        searchQuery = searchQuery.or(`class_subject.ilike.%${word}%,class_number.eq.${isNaN(Number(word)) ? 0 : Number(word)},college_name.ilike.%${word}%`);
+      } else if (words.length === 2) {
+        const [subject, number] = words;
+        const numericNumber = Number(number);
+        
+        if (!isNaN(numericNumber)) {
+          const numberStr = number.toString();
+          const digits = numberStr.length;
+          const multiplier = Math.pow(10, 3 - digits);
+          const minRange = numericNumber * multiplier;
+          const maxRange = (numericNumber + 1) * multiplier - 1;
+          
+          searchQuery = searchQuery
+            .ilike('class_subject', `%${subject}%`)
+            .gte('class_number', minRange)
+            .lte('class_number', maxRange);
+        } else {
+          searchQuery = searchQuery.or(`class_subject.ilike.%${query}%,college_name.ilike.%${query}%`);
+        }
+      } else {
+        searchQuery = searchQuery.or(`class_subject.ilike.%${query}%,college_name.ilike.%${query}%`);
+      }
+
+      const { data, error: searchError } = await searchQuery
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (searchError) throw searchError;
 
-      // For each course, get the document count separately
       const coursesWithStats = await Promise.all(
         (data || []).map(async (course: any) => {
           try {
-            // Get document count for this course
             const { count: docCount, error: countError } = await supabaseClient
               .from('document')
               .select('*', { count: 'exact', head: true })
@@ -201,7 +214,7 @@ export function useCourses(userId?: string): UseCoursesReturn {
             return {
               ...course,
               document_count: docCount || 0,
-              member_count: course.student_count || 0, // Use actual student_count from database
+              member_count: course.student_count || 0,
             };
           } catch (err) {
             console.warn(`Error processing course ${course.class_id}:`, err);
@@ -229,7 +242,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
         throw new Error('You must be logged in to join a course');
       }
 
-      // Check if user already has this course in junction table
       const { data: existingMembership, error: checkError } = await supabaseClient
         .from('user_courses')
         .select('*')
@@ -237,16 +249,15 @@ export function useCourses(userId?: string): UseCoursesReturn {
         .eq('class_id', classId)
         .single();
 
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
+      if (checkError && checkError.code !== 'PGRST116') {
         throw checkError;
       }
 
       if (existingMembership) {
-        return true; // Already joined
+        return true;
       }
 
-      // Verify the course exists
-      const { data: courseData, error: fetchError } = await supabaseClient
+      const { error: fetchError } = await supabaseClient
         .from('class')
         .select('*')
         .eq('class_id', classId)
@@ -254,7 +265,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (fetchError) throw fetchError;
 
-      // Add user to the course via junction table
       const { error: joinError } = await supabaseClient
         .from('user_courses')
         .insert({
@@ -265,7 +275,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (joinError) throw joinError;
 
-      // Increment the student_count in the class table
       const { data: currentClass, error: countFetchError } = await supabaseClient
         .from('class')
         .select('student_count')
@@ -281,11 +290,9 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
         if (updateError) {
           console.warn('Error updating student_count:', updateError);
-          // Don't fail the whole operation, just log the warning
-        }
+          }
       }
 
-      // Refetch courses to update the list
       await fetchCourses();
 
       return true;
@@ -297,7 +304,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
   const fetchCoursesByCollege = async (collegeName: string): Promise<ClassWithStats[]> => {
     try {
-      // Fetch ALL courses by college name (not just enrolled ones)
       const { data, error: fetchError } = await supabaseClient
         .from('class')
         .select('*')
@@ -306,11 +312,9 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (fetchError) throw fetchError;
 
-      // For each course, get the document count separately
       const coursesWithStats = await Promise.all(
         (data || []).map(async (course: any) => {
           try {
-            // Get document count for this course
             const { count: docCount, error: countError } = await supabaseClient
               .from('document')
               .select('*', { count: 'exact', head: true })
@@ -320,7 +324,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
               console.warn(`Error getting document count for course ${course.class_id}:`, countError);
             }
 
-            // Get member count for this course
             const { count: memberCount, error: memberError } = await supabaseClient
               .from('user_courses')
               .select('*', { count: 'exact', head: true })
@@ -330,7 +333,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
               console.warn(`Error getting member count for course ${course.class_id}:`, memberError);
             }
 
-            // Check if current user is enrolled in this course
             let userRole = null;
             let joinedAt = null;
             
@@ -392,7 +394,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
   };
 }
 
-// Hook for fetching a single course
 export function useCourse(classId: string) {
   const [course, setCourse] = useState<ClassWithStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -412,7 +413,6 @@ export function useCourse(classId: string) {
 
         if (fetchError) throw fetchError;
 
-        // Get document count for this course
         const { count: docCount, error: countError } = await supabaseClient
           .from('document')
           .select('*', { count: 'exact', head: true })
@@ -425,7 +425,7 @@ export function useCourse(classId: string) {
         const courseWithStats = {
           ...data,
           document_count: docCount || 0,
-          member_count: data.student_count || 0, // Use actual student_count from database
+          member_count: data.student_count || 0,
         };
 
         setCourse(courseWithStats);

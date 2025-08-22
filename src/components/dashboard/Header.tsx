@@ -71,7 +71,6 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
     <header className="bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-sm shadow-blue-100/50 sticky top-0 z-40">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo and Mobile Menu Button */}
           <div className="flex items-center">
             <button
               onClick={handleMobileMenuToggle}
@@ -87,14 +86,12 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
             </h1>
           </div>
 
-          {/* Search Bar */}
           <SearchBar 
             searchAllCourses={searchAllCourses}
             joinCourse={joinCourse}
             userCourses={courses}
           />
 
-          {/* Profile Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -123,13 +120,11 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
               </svg>
             </button>
 
-            {/* Dropdown Menu */}
             <div className={`absolute right-0 mt-2 w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 overflow-hidden transition-all duration-300 transform origin-top-right ${
               isProfileOpen 
                 ? 'opacity-100 scale-100 translate-y-0' 
                 : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
             }`}>
-              {/* User Info Header */}
               <div className="px-5 py-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b border-gray-100">
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm flex-shrink-0">
@@ -141,7 +136,6 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
                 </div>
               </div>
               
-              {/* Menu Items */}
               <div className="py-2">
                 <button className="w-full flex items-center px-5 py-3 text-gray-700 hover:bg-gray-50/80 hover:text-blue-600 transition-all duration-200 group cursor-pointer">
                   <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,10 +160,8 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
                 </button>
               </div>
               
-              {/* Divider */}
               <div className="border-t border-gray-100 my-1"></div>
               
-              {/* Sign Out */}
               <div className="py-2">
                 <button
                   onClick={handleSignOut}

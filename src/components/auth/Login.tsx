@@ -42,21 +42,18 @@ export default function Login() {
       if (data.user) {
         console.log("User signed in successfully:", data.user);
         router.push("/dashboard");
-        // Don't set loading to false on success - let it stay true during navigation
       } else {
         throw new Error("No user data returned");
       }
     } catch (err) {
       console.error("Login error:", err);
       setError(err instanceof Error ? err.message : "Login failed");
-      setLoading(false); // Only set loading to false on error
+      setLoading(false);
     }
-    // Remove the finally block - don't set loading to false on success
   };
 
   return (
     <>
-      {/* Full-screen loading overlay */}
       {loading && <LoadingSpinner message="Signing in..." size="lg" />}
       
       <form onSubmit={handleSubmit} className="space-y-6">

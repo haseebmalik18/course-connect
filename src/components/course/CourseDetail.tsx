@@ -43,7 +43,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
   const courseCode = course ? `${course.class_subject} ${course.class_number}` : "Loading...";
   const courseName = course ? course.college_name : "Loading...";
 
-  // Fetch enrolled users when component mounts or classId changes
   useEffect(() => {
     const fetchEnrolledUsers = async () => {
       setUsersLoading(true);
@@ -135,8 +134,7 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
     try {
       const result = await deleteDocument(docId);
       if (result.success) {
-        // Refetch documents to update the list
-        window.location.reload(); // Simple refresh for now
+        window.location.reload();
       } else {
         console.error('Delete failed:', result.error);
       }
@@ -145,7 +143,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
     }
   };
 
-  // Group users by role
   const owners = enrolledUsers.filter(p => p.role === "owner");
   const mentors = enrolledUsers.filter(p => p.role === "mentor");
   const students = enrolledUsers.filter(p => p.role === "student");
@@ -234,7 +231,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
 
             {!usersLoading && !usersError && (
               <>
-                {/* Course Owners */}
                 {owners.length > 0 && (
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -268,7 +264,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
                   </div>
                 )}
 
-                {/* Mentors */}
                 {mentors.length > 0 && (
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -302,7 +297,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
                   </div>
                 )}
 
-                {/* Students */}
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">
                     Students ({students.length})
@@ -344,7 +338,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
                   )}
                 </div>
 
-                {/* Total Count */}
                 {enrolledUsers.length === 0 && !usersLoading && (
                   <div className="text-center py-8">
                     <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

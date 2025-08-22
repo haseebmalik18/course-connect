@@ -38,8 +38,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       if (fetchError) throw fetchError;
 
-      // For each document, fetch user info (if we had a profiles table)
-      // For now, we'll use placeholder data
       const docsWithUsers = (data || []).map(doc => ({
         ...doc,
         user: {
@@ -66,7 +64,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
     setError(null);
 
     try {
-      // Get current user
       const { data: { user } } = await supabaseClient.auth.getUser();
       
       if (!user) {
@@ -80,7 +77,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         fileSize: file.size
       });
 
-      // Verify user has access to this class via junction table
       const { data: membership, error: membershipError } = await supabaseClient
         .from('user_courses')
         .select('role')
@@ -95,13 +91,11 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       console.log('User role in class:', membership.role);
 
-      // Create a unique file path
       const fileExt = file.name.split('.').pop();
       const fileName = `${classId}/${user.id}/${Date.now()}.${fileExt}`;
 
       console.log('Uploading to storage path:', fileName);
 
-      // Upload file to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
         .from('documents')
         .upload(fileName, file, {
@@ -111,7 +105,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
-        // If bucket doesn't exist, try creating it first
         if (uploadError.message.includes('bucket')) {
           console.warn('Storage bucket may not exist. Please create a "documents" bucket in Supabase.');
         }
@@ -120,12 +113,10 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       console.log('Storage upload successful:', uploadData);
 
-      // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabaseClient.storage
         .from('documents')
         .getPublicUrl(fileName);
 
-      // Determine document type from file extension
       const detectedType = docType || getDocumentType(file.name);
 
       console.log('Creating database record:', {
@@ -135,7 +126,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         created_by: user.id,
       });
 
-      // Create document record in database
       const { data: docData, error: docError } = await supabaseClient
         .from('document')
         .insert({
@@ -155,9 +145,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       console.log('Document created successfully:', docData);
 
-      // Update the doc_count in the class table
       try {
-        // First get the current class to check if doc_count exists
         const { data: currentClass, error: fetchError } = await supabaseClient
           .from('class')
           .select('doc_count')
@@ -179,10 +167,8 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         }
       } catch (countError) {
         console.warn('Error updating document count:', countError);
-        // Don't throw here as the document was created successfully
       }
 
-      // Refetch documents to update the list
       await fetchDocuments();
 
       return docData;
@@ -197,8 +183,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
     setError(null);
 
     try {
-      // First, get the document to find the storage path
-      const { data: doc, error: fetchError } = await supabaseClient
+        const { data: doc, error: fetchError } = await supabaseClient
         .from('document')
         .select('doc_path, class_id')
         .eq('doc_id', docId)
@@ -206,11 +191,9 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       if (fetchError) throw fetchError;
 
-      // Extract the file path from the URL if it's a storage URL
-      if (doc?.doc_path?.includes('storage')) {
+        if (doc?.doc_path?.includes('storage')) {
         const pathMatch = doc.doc_path.match(/documents\/(.+)$/);
         if (pathMatch) {
-          // Delete from storage
           const { error: storageError } = await supabaseClient.storage
             .from('documents')
             .remove([pathMatch[1]]);
@@ -221,21 +204,17 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         }
       }
 
-      // Delete the database record
-      const { error: deleteError } = await supabaseClient
+        const { error: deleteError } = await supabaseClient
         .from('document')
         .delete()
         .eq('doc_id', docId);
 
       if (deleteError) throw deleteError;
 
-      // Update the doc_count in the class table
       try {
-        // Get the class_id from the deleted document
-        const classId = doc?.class_id;
+          const classId = doc?.class_id;
         if (classId) {
-          // First get the current class to check if doc_count exists
-          const { data: currentClass, error: fetchError } = await supabaseClient
+            const { data: currentClass, error: fetchError } = await supabaseClient
             .from('class')
             .select('doc_count')
             .eq('class_id', classId)
@@ -243,7 +222,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
           if (!fetchError && currentClass) {
             const currentCount = currentClass.doc_count || 0;
-            const newCount = Math.max(0, currentCount - 1); // Ensure count doesn't go below 0
+            const newCount = Math.max(0, currentCount - 1);
             
             const { error: updateError } = await supabaseClient
               .from('class')
@@ -260,8 +239,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         // Don't throw here as the document was deleted successfully
       }
 
-      // Update local state
-      setDocuments(prev => prev.filter(doc => doc.doc_id !== docId));
+        setDocuments(prev => prev.filter(doc => doc.doc_id !== docId));
 
       return true;
     } catch (err: any) {
@@ -273,9 +251,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
   const downloadDocument = async (docPath: string, fileName: string): Promise<void> => {
     try {
-      // If it's a storage URL, we can download directly
       if (docPath.includes('storage')) {
-        // Create a temporary link and click it
         const link = document.createElement('a');
         link.href = docPath;
         link.download = fileName;
@@ -284,7 +260,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         link.click();
         document.body.removeChild(link);
       } else {
-        // For external URLs, open in new tab
         window.open(docPath, '_blank');
       }
     } catch (err: any) {
@@ -308,7 +283,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
   };
 }
 
-// Helper function to determine document type from file name
 function getDocumentType(fileName: string): string {
   const ext = fileName.split('.').pop()?.toLowerCase();
   

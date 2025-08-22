@@ -28,7 +28,6 @@ export function useAuth(): AuthState & AuthActions {
   const router = useRouter();
 
   useEffect(() => {
-    // Get initial session
     const initAuth = async () => {
       try {
         const {
@@ -46,14 +45,12 @@ export function useAuth(): AuthState & AuthActions {
 
     initAuth();
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
 
-      // Handle different auth events
       switch (event) {
         case "SIGNED_IN":
           router.push("/dashboard");
@@ -113,7 +110,6 @@ export function useAuth(): AuthState & AuthActions {
 
       if (error) throw error;
 
-      // Check if email confirmation is required
       if (data.user && !data.session) {
         setError("Please check your email to confirm your account");
       } else {

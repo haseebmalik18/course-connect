@@ -5,41 +5,32 @@ import { supabase } from "@/lib/supabase";
 import { validateCunyEmail, getCunyEmailErrorMessage } from "@/lib/validation";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-// Function to parse email and extract first and last name
 const parseEmailToFullName = (email: string): string => {
-  // Remove the @domain part
   const localPart = email.split('@')[0];
   
-  // Split by dots
   const parts = localPart.split('.');
   
   console.log("Parsing email parts:", { localPart, parts });
   
-  // Filter out parts that are ONLY numbers (like "70")
   const nameParts = parts.filter(part => {
-    // Keep parts that contain letters, even if they also contain numbers
     return /[a-zA-Z]/.test(part);
   });
   
   console.log("Filtered name parts:", nameParts);
   
   if (nameParts.length >= 2) {
-    // Convert to title case and join, removing any remaining numbers
     const firstName = nameParts[0].replace(/\d+/g, '').charAt(0).toUpperCase() + nameParts[0].replace(/\d+/g, '').slice(1).toLowerCase();
     const lastName = nameParts[1].replace(/\d+/g, '').charAt(0).toUpperCase() + nameParts[1].replace(/\d+/g, '').slice(1).toLowerCase();
     return `${firstName} ${lastName}`;
   } else if (nameParts.length === 1) {
-    // If only one part, capitalize it and remove numbers
     const cleanPart = nameParts[0].replace(/\d+/g, '');
     return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
   }
   
-  // Fallback: return the local part without numbers
   return localPart.replace(/\d+/g, '').replace(/\./g, ' ');
 };
 
 export default function Register() {
-  // Test the parsing function with a sample email
   console.log("Testing email parsing:", parseEmailToFullName("faikar.herzaman70@myhunter.cuny.edu"));
   
   const [email, setEmail] = useState("");
@@ -93,7 +84,6 @@ export default function Register() {
       if (data.user) {
         console.log("User created successfully:", data.user);
         
-        // Parse email to get full name
         const fullName = parseEmailToFullName(email);
         console.log("Original email:", email);
         console.log("Parsed full name:", fullName);
@@ -103,7 +93,6 @@ export default function Register() {
           fullName
         });
         
-        // Insert profile record
         try {
           console.log("Attempting to insert profile with data:", {
             id: data.user.id,
@@ -111,18 +100,16 @@ export default function Register() {
             full_name: fullName,
           });
 
-          // First, let's check if a profile already exists
           const { data: existingProfile, error: checkError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', data.user.id)
             .single();
 
-          if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+          if (checkError && checkError.code !== 'PGRST116') {
             console.error("Error checking existing profile:", checkError);
           } else if (existingProfile) {
             console.log("Profile already exists:", existingProfile);
-            // Try to update instead
             const { data: updateData, error: updateError } = await supabase
               .from('profiles')
               .update({ full_name: fullName })
@@ -136,20 +123,17 @@ export default function Register() {
               console.log("Profile updated successfully:", updateData);
             }
           } else {
-            // Insert new profile
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
               .insert({
                 id: data.user.id,
                 email: email.toLowerCase(),
                 full_name: fullName,
-                // major, year, and college will be null for now as requested
               })
-              .select(); // Add select to see what was actually inserted
+              .select();
 
             if (profileError) {
               console.error("Profile creation error:", profileError);
-              // Show error to user but don't prevent redirect
               setError(`Account created but profile setup failed: ${profileError.message}`);
             } else {
               console.log("Profile created successfully:", profileData);
@@ -157,11 +141,9 @@ export default function Register() {
           }
         } catch (profileErr) {
           console.error("Profile creation failed:", profileErr);
-          // Show error to user but don't prevent redirect
           setError(`Account created but profile setup failed: ${profileErr instanceof Error ? profileErr.message : 'Unknown error'}`);
         }
 
-        // Redirect to dashboard after a short delay to show any errors
         setTimeout(() => {
           window.location.href = "/dashboard";
         }, 3000);
@@ -171,14 +153,12 @@ export default function Register() {
     } catch (err) {
       console.error("Registration error:", err);
       setError(err instanceof Error ? err.message : "Registration failed");
-      setLoading(false); // Only set loading to false on error
+      setLoading(false);
     }
-    // Remove the finally block - don't set loading to false on success
   };
 
   return (
     <>
-      {/* Full-screen loading overlay */}
       {loading && <LoadingSpinner message="Creating your account..." size="lg" />}
       
       <form onSubmit={handleSubmit} className="space-y-6">

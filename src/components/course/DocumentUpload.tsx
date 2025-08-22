@@ -52,7 +52,6 @@ export default function DocumentUpload({ isOpen, onClose, onUpload, loading = fa
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
       setSelectedFile(file);
-      // Set default title to filename without extension
       setTitle(file.name.replace(/\.[^/.]+$/, ""));
     }
   }, []);
@@ -197,7 +196,6 @@ export default function DocumentUpload({ isOpen, onClose, onUpload, loading = fa
             </div>
           </div>
 
-          {/* File Details */}
           {selectedFile && (
             <div className="space-y-4">
               <div>
@@ -240,7 +238,6 @@ export default function DocumentUpload({ isOpen, onClose, onUpload, loading = fa
             </div>
           )}
 
-          {/* Error Message */}
           {uploadError && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <div className="flex">
@@ -253,7 +250,6 @@ export default function DocumentUpload({ isOpen, onClose, onUpload, loading = fa
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             onClick={handleClose}

@@ -94,7 +94,6 @@ export default function Dashboard() {
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-r from-indigo-200/25 via-purple-100/20 to-transparent rounded-full blur-3xl translate-y-40 -translate-x-40 pointer-events-none"></div>
       <div className="absolute top-1/2 left-1/2 w-[300px] h-[300px] bg-gradient-to-br from-blue-100/15 to-indigo-100/15 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
       
-      {/* Header */}
       <Header
         user={user}
         courses={courses}
@@ -105,7 +104,6 @@ export default function Dashboard() {
       />
 
       <div className="flex relative">
-        {/* Sidebar */}
         <Sidebar
           isMobileMenuOpen={isMobileMenuOpen}
           activeNav={activeNav}
@@ -114,13 +112,10 @@ export default function Dashboard() {
           selectedCollege={selectedCollege}
         />
 
-        {/* Main Content */}
         <main className="flex-1 p-8 lg:p-12 relative">
           <div className="max-w-7xl mx-auto relative">
-            {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-100/30 to-transparent rounded-full blur-xl pointer-events-none"></div>
             <div className="absolute bottom-10 left-10 w-24 h-24 bg-gradient-to-tr from-purple-100/30 to-transparent rounded-full blur-lg pointer-events-none"></div>
-            {/* Page Header */}
             <div className="mb-10">
               <PageHeader
                 title={selectedCollege ? `${selectedCollege} Courses` : "My Courses"}
@@ -128,7 +123,6 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Show All Courses Button when college is selected */}
             {selectedCollege && (
               <div className="mb-8">
                 <button
@@ -143,7 +137,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Course Grid Container */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <CourseGrid
                 courses={selectedCollege ? filteredCourses : courses}
@@ -157,7 +150,6 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {/* Add Course Modal */}
       <AddCourseModal
         isOpen={isAddCourseModalOpen}
         onClose={() => setIsAddCourseModalOpen(false)}

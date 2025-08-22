@@ -84,7 +84,6 @@ export default function CourseGrid({ courses, loading, error, onCourseClick, onA
         </div>
       ))}
       
-      {/* Add New Course Card */}
       <div
         onClick={onAddCourse}
         className="group bg-white/60 backdrop-blur-sm p-8 rounded-2xl shadow-lg border-2 border-dashed border-gray-300/60 hover:shadow-2xl hover:shadow-blue-400/20 hover:-translate-y-3 hover:border-blue-400/80 hover:bg-gradient-to-br hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center min-h-[200px]"
