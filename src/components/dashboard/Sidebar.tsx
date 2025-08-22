@@ -63,7 +63,7 @@ export default function Sidebar({ isMobileMenuOpen, activeNav, onNavChange, onCo
           <div key={item.id}>
             <button
               onClick={() => item.hasDropdown ? handleCollegeClick() : onNavChange(item.id)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all cursor-pointer ${
                 activeNav === item.id
                   ? "bg-blue-50 text-blue-600 font-medium"
                   : "text-gray-700 hover:bg-gray-50"
@@ -86,7 +86,7 @@ export default function Sidebar({ isMobileMenuOpen, activeNav, onNavChange, onCo
                   <button
                     key={college}
                     onClick={() => handleSpecificCollegeClick(college)}
-                    className={`w-full text-left px-4 py-2 text-sm rounded transition-colors ${
+                    className={`w-full text-left px-4 py-2 text-sm rounded transition-colors cursor-pointer ${
                       selectedCollege === college
                         ? "bg-blue-100 text-blue-700 font-medium border border-blue-200"
                         : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"

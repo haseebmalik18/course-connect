@@ -183,7 +183,7 @@ export default function SearchBar({ searchAllCourses, joinCourse, userCourses }:
                       <button
                         onClick={() => handleJoinCourse(course)}
                         disabled={isJoining}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       >
                         {isJoining ? (
                           <>

@@ -33,7 +33,7 @@ export default function AuthPage() {
               ></div>
 
               <button
-                className={`relative z-10 flex-1 py-3 px-6 text-sm font-medium rounded-xl transition-all duration-300 ${
+                className={`relative z-10 flex-1 py-3 px-6 text-sm font-medium rounded-xl transition-all duration-300 cursor-pointer ${
                   isLogin ? "text-white" : "text-gray-600 hover:text-gray-800"
                 }`}
                 onClick={() => setIsLogin(true)}
@@ -41,7 +41,7 @@ export default function AuthPage() {
                 Sign In
               </button>
               <button
-                className={`relative z-10 flex-1 py-3 px-6 text-sm font-medium rounded-xl transition-all duration-300 ${
+                className={`relative z-10 flex-1 py-3 px-6 text-sm font-medium rounded-xl transition-all duration-300 cursor-pointer ${
                   !isLogin ? "text-white" : "text-gray-600 hover:text-gray-800"
                 }`}
                 onClick={() => setIsLogin(false)}
