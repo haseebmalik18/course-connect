@@ -1,9 +1,9 @@
 "use client";
 
-import { Class } from "@/lib/types/database";
+import { ClassWithStats } from "@/lib/types/database";
 
 interface CourseCardProps {
-  course: Class;
+  course: ClassWithStats;
   onClick: (courseId: string) => void;
 }
 
@@ -37,13 +37,13 @@ export default function CourseCard({ course, onClick }: CourseCardProps) {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
-          <span>{course.student_count || 0} members</span>
+          <span>{course.member_count || 0} members</span>
         </div>
         <div className="flex items-center space-x-1 text-gray-500">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
-          <span>{course.doc_count || 0} files</span>
+          <span>{course.document_count || 0} files</span>
         </div>
       </div>
     </div>
