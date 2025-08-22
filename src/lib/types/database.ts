@@ -6,6 +6,8 @@ export interface Class {
   class_number: number;
   created_by: string;
   created_at: string;
+  doc_count?: number;
+  student_count?: number;
 }
 
 export interface Document {
