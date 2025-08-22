@@ -10,8 +10,8 @@ export async function getCourses(options?: {
   offset?: number;
 }): Promise<{ data: ClassWithStats[]; error: Error | null }> {
   try {
-    let query = supabaseClient
-      .from('class')
+    let query = (supabaseClient
+      .from('class') as any)
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -36,7 +36,7 @@ export async function getCourses(options?: {
     if (error) throw error;
 
     const coursesWithStats = await Promise.all(
-      (courses || []).map(async (course) => {
+      (courses || []).map(async (course: any) => {
         try {
           const { count: docCount, error: countError } = await supabaseClient
             .from('document')
@@ -83,8 +83,8 @@ export async function getCourseById(
   classId: string
 ): Promise<{ data: ClassWithStats | null; error: Error | null }> {
   try {
-    const { data: course, error } = await supabaseClient
-      .from('class')
+    const { data: course, error } = await (supabaseClient
+      .from('class') as any)
       .select('*')
       .eq('class_id', classId)
       .single();
@@ -205,15 +205,15 @@ export async function getDocumentsByClass(
   classId: string
 ): Promise<{ data: DocumentWithUser[]; error: Error | null }> {
   try {
-    const { data, error } = await supabaseClient
-      .from('document')
+    const { data, error } = await (supabaseClient
+      .from('document') as any)
       .select('doc_id, class_id, doc_path, doc_type, doc_name, created_by, created_at')
       .eq('class_id', classId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    const docsWithUsers = (data || []).map(doc => ({
+    const docsWithUsers = (data || []).map((doc: any) => ({
       ...doc,
       user: {
         full_name: `User ${doc.created_by.slice(0, 8)}`,
@@ -310,8 +310,8 @@ export async function deleteDocument(
   docId: string
 ): Promise<{ success: boolean; error: Error | null }> {
   try {
-    const { data: doc, error: fetchError } = await supabaseClient
-      .from('document')
+    const { data: doc, error: fetchError } = await (supabaseClient
+      .from('document') as any)
       .select('doc_path')
       .eq('doc_id', docId)
       .single();
@@ -425,8 +425,8 @@ export async function getEnrolledUsers(
   classId: string
 ): Promise<{ data: any[]; error: Error | null }> {
   try {
-    const { data, error } = await supabaseClient
-      .from('user_courses')
+    const { data, error } = await (supabaseClient
+      .from('user_courses') as any)
       .select(`
         user_id,
         role,
