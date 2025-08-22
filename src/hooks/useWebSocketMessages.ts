@@ -47,8 +47,8 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabaseClient
-        .from("messages")
+      const { data, error: fetchError } = await (supabaseClient
+        .from("messages") as any)
         .select("*")
         .eq("class_id", classId)
         .order("created_at", { ascending: true })
@@ -173,8 +173,8 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      const { error: membershipError } = await supabaseClient
-        .from("user_courses")
+      const { error: membershipError } = await (supabaseClient
+        .from("user_courses") as any)
         .select("role")
         .eq("user_id", user.id)
         .eq("class_id", classId)
@@ -184,14 +184,14 @@ export function useWebSocketMessages(
         throw new Error("You are not a member of this course");
       }
 
-      const { error: insertError } = await supabaseClient
-        .from("messages")
+      const { error: insertError } = await (supabaseClient
+        .from("messages") as any)
         .insert({
           class_id: classId,
           user_id: user.id,
           content: content.trim(),
           message_type: "text",
-        } as any)
+        })
         .select()
         .single();
 
@@ -214,8 +214,8 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      const { error: deleteError } = await supabaseClient
-        .from("messages")
+      const { error: deleteError } = await (supabaseClient
+        .from("messages") as any)
         .delete()
         .eq("message_id", messageId);
 

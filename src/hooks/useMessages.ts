@@ -29,8 +29,8 @@ export function useMessages(classId?: string): UseMessagesReturn {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabaseClient
-        .from('messages')
+      const { data, error: fetchError } = await (supabaseClient
+        .from('messages') as any)
         .select('*')
         .eq('class_id', classId)
         .order('created_at', { ascending: true })
@@ -67,8 +67,8 @@ export function useMessages(classId?: string): UseMessagesReturn {
         throw new Error('You must be logged in to send messages');
       }
 
-      const { data: membership, error: membershipError } = await supabaseClient
-        .from('user_courses')
+      const { data: membership, error: membershipError } = await (supabaseClient
+        .from('user_courses') as any)
         .select('role')
         .eq('user_id', user.id)
         .eq('class_id', classId)
@@ -78,8 +78,8 @@ export function useMessages(classId?: string): UseMessagesReturn {
         throw new Error('You are not a member of this course');
       }
 
-      const { data, error: insertError } = await supabaseClient
-        .from('messages')
+      const { data, error: insertError } = await (supabaseClient
+        .from('messages') as any)
         .insert({
           class_id: classId,
           user_id: user.id,
@@ -105,8 +105,8 @@ export function useMessages(classId?: string): UseMessagesReturn {
     setError(null);
 
     try {
-      const { error: deleteError } = await supabaseClient
-        .from('messages')
+      const { error: deleteError } = await (supabaseClient
+        .from('messages') as any)
         .delete()
         .eq('message_id', messageId);
 

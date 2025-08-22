@@ -134,8 +134,8 @@ export async function createCourse(courseData: {
       throw new Error('User must be authenticated to create a course');
     }
 
-    const { data, error } = await supabaseClient
-      .from('class')
+    const { data, error } = await (supabaseClient
+      .from('class') as any)
       .insert({
         ...courseData,
         created_by: user.id,
@@ -157,8 +157,8 @@ export async function updateCourse(
   updates: Partial<Pick<Class, 'college_name' | 'class_subject' | 'class_number'>>
 ): Promise<{ data: Class | null; error: Error | null }> {
   try {
-    const { data, error } = await supabaseClient
-      .from('class')
+    const { data, error } = await (supabaseClient
+      .from('class') as any)
       .update(updates)
       .eq('class_id', classId)
       .select()
@@ -177,8 +177,8 @@ export async function deleteCourse(
   classId: string
 ): Promise<{ success: boolean; error: Error | null }> {
   try {
-    const { error: docsError } = await supabaseClient
-      .from('document')
+    const { error: docsError } = await (supabaseClient
+      .from('document') as any)
       .delete()
       .eq('class_id', classId);
 
@@ -186,8 +186,8 @@ export async function deleteCourse(
       console.warn('Error deleting course documents:', docsError);
     }
 
-    const { error } = await supabaseClient
-      .from('class')
+    const { error } = await (supabaseClient
+      .from('class') as any)
       .delete()
       .eq('class_id', classId);
 
@@ -261,8 +261,8 @@ export async function uploadDocument(
 
     const docType = getDocumentType(file.name);
 
-    const { data, error } = await supabaseClient
-      .from('document')
+    const { data, error } = await (supabaseClient
+      .from('document') as any)
       .insert({
         class_id: classId,
         doc_path: publicUrl,
@@ -276,8 +276,8 @@ export async function uploadDocument(
     if (error) throw error;
 
     try {
-      const { data: currentClass, error: fetchError } = await supabaseClient
-        .from('class')
+      const { data: currentClass, error: fetchError } = await (supabaseClient
+        .from('class') as any)
         .select('doc_count')
         .eq('class_id', classId)
         .single();
@@ -286,8 +286,8 @@ export async function uploadDocument(
         const currentCount = currentClass.doc_count || 0;
         const newCount = currentCount + 1;
         
-        const { error: updateError } = await supabaseClient
-          .from('class')
+        const { error: updateError } = await (supabaseClient
+          .from('class') as any)
           .update({ doc_count: newCount })
           .eq('class_id', classId);
 
@@ -331,8 +331,8 @@ export async function deleteDocument(
       }
     }
 
-    const { error } = await supabaseClient
-      .from('document')
+    const { error } = await (supabaseClient
+      .from('document') as any)
       .delete()
       .eq('doc_id', docId);
 

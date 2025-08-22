@@ -100,8 +100,8 @@ export default function Register() {
             full_name: fullName,
           });
 
-          const { data: existingProfile, error: checkError } = await supabase
-            .from('profiles')
+          const { data: existingProfile, error: checkError } = await (supabase
+            .from('profiles') as any)
             .select('*')
             .eq('id', data.user.id)
             .single();
@@ -110,8 +110,8 @@ export default function Register() {
             console.error("Error checking existing profile:", checkError);
           } else if (existingProfile) {
             console.log("Profile already exists:", existingProfile);
-            const { data: updateData, error: updateError } = await supabase
-              .from('profiles')
+            const { data: updateData, error: updateError } = await (supabase
+              .from('profiles') as any)
               .update({ full_name: fullName })
               .eq('id', data.user.id)
               .select();
@@ -123,8 +123,8 @@ export default function Register() {
               console.log("Profile updated successfully:", updateData);
             }
           } else {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
+            const { data: profileData, error: profileError } = await (supabase
+              .from('profiles') as any)
               .insert({
                 id: data.user.id,
                 email: email.toLowerCase(),
