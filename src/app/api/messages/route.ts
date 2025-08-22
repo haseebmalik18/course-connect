@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
     return new Response("Server configuration error", { status: 500 });
   }
 
+  // Type assertion: we know supabaseServerClient is not null after the check above
+  const supabase = supabaseServerClient!;
+
   const headers = {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
       const setupSubscription = async () => {
         try {
           const { data: initialMessages, error: fetchError } = await (
-            supabaseServerClient.from("messages") as any
+            supabase.from("messages") as any
           )
             .select("*")
             .eq("class_id", classId)
@@ -75,7 +78,7 @@ export async function GET(request: NextRequest) {
           const pollMessages = async () => {
             try {
               const { data: messages, error: pollError } = await (
-                supabaseServerClient.from("messages") as any
+                supabase.from("messages") as any
               )
                 .select("*")
                 .eq("class_id", classId)
@@ -147,6 +150,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Type assertion: we know supabaseServerClient is not null after the check above
+    const supabase = supabaseServerClient!;
+
     const body = await request.json();
     const { classId, content, userId } = body;
 
@@ -170,7 +176,7 @@ export async function POST(request: NextRequest) {
 
     // Check user membership with better error handling
     const { data: membership, error: membershipError } = await (
-      supabaseServerClient.from("user_courses") as any
+      supabase.from("user_courses") as any
     )
       .select("role")
       .eq("user_id", userId)
@@ -187,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user is course creator
     const { data: courseData, error: courseError } = await (
-      supabaseServerClient.from("class") as any
+      supabase.from("class") as any
     )
       .select("created_by")
       .eq("class_id", classId)
@@ -218,7 +224,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert message with better error handling
-    const { data, error } = await (supabaseServerClient.from("messages") as any)
+    const { data, error } = await (supabase.from("messages") as any)
       .insert({
         class_id: classId,
         user_id: userId,
