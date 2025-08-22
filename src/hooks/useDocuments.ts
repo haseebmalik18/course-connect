@@ -9,7 +9,7 @@ interface UseDocumentsReturn {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  uploadDocument: (file: File, classId: string, docType?: string) => Promise<Document | null>;
+  uploadDocument: (file: File, classId: string, docName: string, docType?: string) => Promise<Document | null>;
   deleteDocument: (docId: string) => Promise<boolean>;
   downloadDocument: (docPath: string, fileName: string) => Promise<void>;
 }
@@ -32,7 +32,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
     try {
       const { data, error: fetchError } = await supabaseClient
         .from('document')
-        .select('*')
+        .select('doc_id, class_id, doc_path, doc_type, created_by, created_at, doc_name')
         .eq('class_id', classId)
         .order('created_at', { ascending: false });
 
@@ -60,6 +60,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
   const uploadDocument = async (
     file: File,
     classId: string,
+    docName: string,
     docType?: string
   ): Promise<Document | null> => {
     setError(null);
@@ -141,6 +142,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
           class_id: classId,
           doc_path: publicUrl,
           doc_type: detectedType,
+          doc_name: docName,
           created_by: user.id,
         })
         .select()
@@ -152,6 +154,33 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
       }
 
       console.log('Document created successfully:', docData);
+
+      // Update the doc_count in the class table
+      try {
+        // First get the current class to check if doc_count exists
+        const { data: currentClass, error: fetchError } = await supabaseClient
+          .from('class')
+          .select('doc_count')
+          .eq('class_id', classId)
+          .single();
+
+        if (!fetchError && currentClass) {
+          const currentCount = currentClass.doc_count || 0;
+          const newCount = currentCount + 1;
+          
+          const { error: updateError } = await supabaseClient
+            .from('class')
+            .update({ doc_count: newCount })
+            .eq('class_id', classId);
+
+          if (updateError) {
+            console.warn('Error updating class doc_count:', updateError);
+          }
+        }
+      } catch (countError) {
+        console.warn('Error updating document count:', countError);
+        // Don't throw here as the document was created successfully
+      }
 
       // Refetch documents to update the list
       await fetchDocuments();
@@ -171,7 +200,7 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
       // First, get the document to find the storage path
       const { data: doc, error: fetchError } = await supabaseClient
         .from('document')
-        .select('doc_path')
+        .select('doc_path, class_id')
         .eq('doc_id', docId)
         .single();
 
@@ -199,6 +228,37 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         .eq('doc_id', docId);
 
       if (deleteError) throw deleteError;
+
+      // Update the doc_count in the class table
+      try {
+        // Get the class_id from the deleted document
+        const classId = doc?.class_id;
+        if (classId) {
+          // First get the current class to check if doc_count exists
+          const { data: currentClass, error: fetchError } = await supabaseClient
+            .from('class')
+            .select('doc_count')
+            .eq('class_id', classId)
+            .single();
+
+          if (!fetchError && currentClass) {
+            const currentCount = currentClass.doc_count || 0;
+            const newCount = Math.max(0, currentCount - 1); // Ensure count doesn't go below 0
+            
+            const { error: updateError } = await supabaseClient
+              .from('class')
+              .update({ doc_count: newCount })
+              .eq('class_id', classId);
+
+            if (updateError) {
+              console.warn('Error updating class doc_count:', updateError);
+            }
+          }
+        }
+      } catch (countError) {
+        console.warn('Error updating document count:', countError);
+        // Don't throw here as the document was deleted successfully
+      }
 
       // Update local state
       setDocuments(prev => prev.filter(doc => doc.doc_id !== docId));

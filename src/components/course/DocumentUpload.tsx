@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useRef, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, FileRejection } from 'react-dropzone';
 
 interface DocumentUploadProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (file: File, title?: string, description?: string) => Promise<boolean>;
+  onUpload: (file: File, docName: string, description?: string) => Promise<boolean>;
   loading?: boolean;
 }
 
@@ -34,7 +34,7 @@ export default function DocumentUpload({ isOpen, onClose, onUpload, loading = fa
   const [dragActive, setDragActive] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
     setUploadError('');
     
     if (rejectedFiles.length > 0) {
@@ -52,11 +52,10 @@ export default function DocumentUpload({ isOpen, onClose, onUpload, loading = fa
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
       setSelectedFile(file);
-      if (!title) {
-        setTitle(file.name.replace(/\.[^/.]+$/, ""));
-      }
+      // Set default title to filename without extension
+      setTitle(file.name.replace(/\.[^/.]+$/, ""));
     }
-  }, [title]);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -70,6 +69,11 @@ export default function DocumentUpload({ isOpen, onClose, onUpload, loading = fa
   const handleSubmit = async () => {
     if (!selectedFile) {
       setUploadError('Please select a file to upload.');
+      return;
+    }
+
+    if (!title.trim()) {
+      setUploadError('Document name is required.');
       return;
     }
 
@@ -198,16 +202,26 @@ export default function DocumentUpload({ isOpen, onClose, onUpload, loading = fa
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title <span className="text-red-500">*</span>
+                  Document Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Chapter 5 Study Notes"
+                  placeholder="e.g., Chapter 5 Study Notes, Final Exam Review, Lab Report"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={loading}
+                  required
+                  minLength={1}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Give your document a descriptive name so classmates can easily find it
+                </p>
+                {!title.trim() && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Document name is required
+                  </p>
+                )}
               </div>
               
               <div>
