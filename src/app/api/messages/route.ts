@@ -258,14 +258,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isCreator = courseData?.created_by === userId;
+    const isCreator = (courseData as any)?.created_by === userId;
     const isMember = membership && !membershipError;
 
     console.log("Access check:", {
       isCreator,
       isMember,
       membershipRole: membership?.role,
-      courseCreator: courseData?.created_by?.slice(0, 8),
+      courseCreator: (courseData as any)?.created_by?.slice(0, 8),
       userId: userId?.slice(0, 8),
     });
 
