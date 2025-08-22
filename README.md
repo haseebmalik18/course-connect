@@ -159,6 +159,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ for CUNY students by CUNY students**
 
-**🌐 Visit**: [Your deployed URL]  
-**📧 Contact**: [Your email]  
-**🐛 Report Issues**: [GitHub Issues](https://github.com/faikarf3/course-connect/issues)
+**🌐 Visit**: https://course-connect-ashy.vercel.app/  
+**🐛 Report Issues**: [GitHub Issues](https://github.com/faikarf3/course-connect)
