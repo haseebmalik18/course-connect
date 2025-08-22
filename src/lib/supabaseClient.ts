@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Class, Document, Profile } from './types/database';
+import type { Class, Document, Profile, Message } from './types/database';
 
 export interface Database {
   public: {
@@ -21,6 +21,11 @@ export interface Database {
         Row: Profile;
         Insert: Omit<Profile, 'created_at'>;
         Update: Partial<Omit<Profile, 'id' | 'created_at'>>;
+      };
+      messages: {
+        Row: Message;
+        Insert: Omit<Message, 'message_id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Message, 'message_id' | 'created_at' | 'updated_at'>>;
       };
     };
   };
@@ -45,4 +50,4 @@ export const supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKe
   },
 });
 
-export type { Class, Document, Profile } from './types/database';
+export type { Class, Document, Profile, Message } from './types/database';
