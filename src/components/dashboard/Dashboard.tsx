@@ -11,14 +11,17 @@ import CourseGrid from "./CourseGrid";
 import PageHeader from "./PageHeader";
 import LoadingSpinner from "../LoadingSpinner";
 import { Class } from "@/lib/types/database";
+import { ClassWithStats } from "@/lib/types/database";
 
 export default function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("courses");
   const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
+  const [selectedCollege, setSelectedCollege] = useState<string | undefined>(undefined);
+  const [filteredCourses, setFilteredCourses] = useState<ClassWithStats[]>([]);
   const router = useRouter();
   const { user, signOut, loading: authLoading } = useAuth();
-  const { courses, loading, error, createCourse, searchAllCourses, joinCourse } = useCourses(user?.id);
+  const { courses, loading, error, createCourse, searchAllCourses, joinCourse, fetchCoursesByCollege } = useCourses(user?.id);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -59,6 +62,29 @@ export default function Dashboard() {
 
   const handleNavChange = (navId: string) => {
     setActiveNav(navId);
+    if (navId === "courses") {
+      setSelectedCollege(undefined);
+      setFilteredCourses([]);
+    }
+  };
+
+  const handleCollegeSelect = async (collegeName: string) => {
+    setSelectedCollege(collegeName);
+    setActiveNav("colleges");
+    
+    try {
+      const collegeCourses = await fetchCoursesByCollege(collegeName);
+      setFilteredCourses(collegeCourses);
+    } catch (error) {
+      console.error('Error fetching courses by college:', error);
+      setFilteredCourses([]);
+    }
+  };
+
+  const handleShowAllCourses = () => {
+    setSelectedCollege(undefined);
+    setFilteredCourses([]);
+    setActiveNav("courses");
   };
 
   return (
@@ -79,6 +105,8 @@ export default function Dashboard() {
           isMobileMenuOpen={isMobileMenuOpen}
           activeNav={activeNav}
           onNavChange={handleNavChange}
+          onCollegeSelect={handleCollegeSelect}
+          selectedCollege={selectedCollege}
         />
 
         {/* Main Content */}
@@ -86,14 +114,29 @@ export default function Dashboard() {
           <div className="max-w-7xl mx-auto">
             {/* Page Header */}
             <PageHeader
-              title="My Courses"
-              subtitle="Manage and access your enrolled courses"
+              title={selectedCollege ? `${selectedCollege} Courses` : "My Courses"}
+              subtitle={selectedCollege ? `Courses at ${selectedCollege}` : "Manage and access your enrolled courses"}
             />
+
+            {/* Show All Courses Button when college is selected */}
+            {selectedCollege && (
+              <div className="mb-6">
+                <button
+                  onClick={handleShowAllCourses}
+                  className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Back to your Courses
+                </button>
+              </div>
+            )}
 
             {/* Course Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <CourseGrid
-                courses={courses}
+                courses={selectedCollege ? filteredCourses : courses}
                 loading={loading}
                 error={error}
                 onCourseClick={handleCourseClick}
