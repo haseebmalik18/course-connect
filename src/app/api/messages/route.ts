@@ -56,29 +56,33 @@ export async function GET(request: NextRequest) {
             sendHeartbeat();
           }, 30000);
 
+          let lastMessageTime = new Date().toISOString();
+          
           const pollMessages = async () => {
             try {
               const { data: messages } = await (supabaseClient
                 .from("messages") as any)
                 .select("*")
                 .eq("class_id", classId)
-                .order("created_at", { ascending: false })
-                .limit(1);
+                .gt("created_at", lastMessageTime)
+                .order("created_at", { ascending: true });
 
               if (messages && messages.length > 0) {
-                const latestMessage = messages[0];
-                const messageWithUser = {
-                  ...latestMessage,
-                  user: {
-                    full_name: `User ${latestMessage.user_id.slice(0, 8)}`,
-                    email: "user@email.com",
-                  },
-                };
-                
-                sendMessage({ type: 'new', message: messageWithUser });
+                messages.forEach((message: any) => {
+                  const messageWithUser = {
+                    ...message,
+                    user: {
+                      full_name: `User ${message.user_id.slice(0, 8)}`,
+                      email: "user@email.com",
+                    },
+                  };
+                  sendMessage({ type: 'new', message: messageWithUser });
+                });
+                lastMessageTime = messages[messages.length - 1].created_at;
               }
             } catch (error) {
               console.error('Error polling messages:', error);
+              sendMessage({ type: 'error', error: 'Failed to load messages' });
             }
           };
 
@@ -90,7 +94,7 @@ export async function GET(request: NextRequest) {
           };
         } catch (error) {
           console.error('Setup error:', error);
-          sendMessage({ type: 'error', error: 'Failed to setup subscription' });
+          sendMessage({ type: 'error', error: 'Failed to load messages' });
         }
       };
 
