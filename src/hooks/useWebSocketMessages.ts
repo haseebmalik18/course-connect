@@ -87,6 +87,7 @@ export function useWebSocketMessages(
       `Setting up Supabase Realtime for class ${classId}, user ${user.id}`
     );
 
+    // Fetch messages first
     fetchMessages();
 
     const channel = supabaseClient
@@ -165,7 +166,7 @@ export function useWebSocketMessages(
       }
       setConnected(false);
     };
-  }, [classId, user?.id, fetchMessages]);
+  }, [classId, user?.id]);
 
   const sendMessage = async (content: string): Promise<boolean> => {
     if (!classId || !content.trim() || !user) return false;
@@ -197,6 +198,9 @@ export function useWebSocketMessages(
 
       if (insertError) throw insertError;
 
+      // Optionally refetch messages to ensure UI is updated
+      // The realtime subscription should handle this, but this is a fallback
+      setTimeout(() => fetchMessages(), 100);
 
       return true;
     } catch (err: unknown) {
