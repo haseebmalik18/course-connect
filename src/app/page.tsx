@@ -43,7 +43,7 @@ export default function LandingPage() {
                 </span>
               </h1>
               <p className="text-xl text-gray-600 mb-10 leading-relaxed">
-                The platform where CUNY students share knowledge, find mentors, and succeed together. Join a community built by students, for students.
+                The platform where CUNY students share knowledge and succeed together. Join a community built by students, for students.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
