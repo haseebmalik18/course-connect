@@ -195,13 +195,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { error: createProfileError } = await supabase
-        .from("profiles")
-        .insert({
-          id: userId,
-          email: authUser.user?.email || "unknown@email.com",
-          full_name: authUser.user?.user_metadata?.full_name || "Unknown User",
-        });
+      const { error: createProfileError } = await (
+        supabase.from("profiles") as any
+      ).insert({
+        id: userId,
+        email: authUser.user?.email || "unknown@email.com",
+        full_name: authUser.user?.user_metadata?.full_name || "Unknown User",
+      });
 
       if (createProfileError) {
         console.error("Error creating profile:", createProfileError);
