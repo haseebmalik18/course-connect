@@ -275,16 +275,16 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (joinError) throw joinError;
 
-      const { data: currentClass, error: countFetchError } = await supabaseClient
-        .from('class')
+      const { data: currentClass, error: countFetchError } = await (supabaseClient
+        .from('class') as any)
         .select('student_count')
         .eq('class_id', classId)
         .single();
 
       if (!countFetchError && currentClass) {
         const currentCount = currentClass.student_count || 0;
-        const { error: updateError } = await supabaseClient
-          .from('class')
+        const { error: updateError } = await (supabaseClient
+          .from('class') as any)
           .update({ student_count: currentCount + 1 })
           .eq('class_id', classId);
 
