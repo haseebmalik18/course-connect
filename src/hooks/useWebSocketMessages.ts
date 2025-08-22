@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { MessageWithUser } from "@/lib/types/database";
-import { ChatSSE } from "@/lib/websocket";
 import { User } from "@supabase/supabase-js";
 
 interface UseWebSocketMessagesReturn {
@@ -23,8 +22,8 @@ export function useWebSocketMessages(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
-  const sseRef = useRef<ChatSSE | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const subscriptionRef = useRef<any>(null);
 
   useEffect(() => {
     const getUser = async () => {
@@ -84,56 +83,94 @@ export function useWebSocketMessages(
     }
 
     console.log(
-      `Setting up SSE connection for class ${classId}, user ${user.id}`
+      `Setting up real-time subscription for class ${classId}, user ${user.id}`
     );
 
-    const connectSSE = () => {
-      if (sseRef.current) {
-        sseRef.current.disconnect();
-      }
+    // Fetch existing messages first
+    fetchMessages();
 
-      sseRef.current = new ChatSSE(classId, user.id, {
-        onMessage: (message: MessageWithUser) => {
-          console.log("Received message via SSE:", message);
+    // Set up real-time subscription
+    const channel = supabaseClient
+      .channel(`class_messages:${classId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `class_id=eq.${classId}`
+        },
+        (payload) => {
+          console.log('New message received:', payload);
+          const newMessage = payload.new as any;
+          
+          // Create message with user info
+          const messageWithUser: MessageWithUser = {
+            ...newMessage,
+            user: {
+              full_name: `User ${newMessage.user_id.slice(0, 8)}`,
+              email: "user@email.com",
+            },
+          };
+
+          // Add message to state, checking for duplicates
           setMessages((prev) => {
+            // Check for duplicate using message_id (more reliable than created_at + content)
             const exists = prev.some(
-              (msg) => msg.message_id === message.message_id
+              (msg) => msg.message_id === newMessage.message_id
             );
-            if (exists) return prev;
-            return [...prev, message];
+            
+            if (exists) {
+              console.log('Duplicate message detected, skipping:', newMessage.message_id);
+              return prev;
+            }
+            
+            console.log('Adding new message to state:', newMessage.message_id);
+            return [...prev, messageWithUser];
           });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `class_id=eq.${classId}`
         },
-        onDelete: (messageId: string) => {
-          console.log("Received delete via SSE:", messageId);
+        (payload) => {
+          console.log('Message deleted:', payload);
+          const deletedMessage = payload.old as any;
+          
           setMessages((prev) =>
-            prev.filter((msg) => msg.message_id !== messageId)
+            prev.filter((msg) => msg.message_id !== deletedMessage.message_id)
           );
-        },
-        onConnect: () => {
-          console.log("SSE connected successfully");
-          setConnected(true);
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+        setConnected(status === 'SUBSCRIBED');
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to real-time messages');
           setError(null);
-        },
-        onDisconnect: () => {
-          console.log("SSE disconnected");
-          setConnected(false);
-        },
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          console.error('Subscription error:', status);
+          setError('Real-time connection lost');
+        }
       });
 
-      sseRef.current.connect();
-    };
+    subscriptionRef.current = channel;
 
-    connectSSE();
-
+    // Cleanup on unmount
     return () => {
-      if (sseRef.current) {
-        console.log("Cleaning up SSE connection");
-        sseRef.current.disconnect();
-        sseRef.current = null;
+      console.log('Cleaning up real-time subscription');
+      if (subscriptionRef.current) {
+        supabaseClient.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
       }
       setConnected(false);
     };
-  }, [classId, user?.id]);
+  }, [classId, user?.id, fetchMessages]);
 
   const sendMessage = async (content: string): Promise<boolean> => {
     if (!classId || !content.trim() || !user) return false;
@@ -141,7 +178,8 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      const { data: membership, error: membershipError } = await supabaseClient
+      // Check membership first
+      const { error: membershipError } = await supabaseClient
         .from("user_courses")
         .select("role")
         .eq("user_id", user.id)
@@ -152,7 +190,8 @@ export function useWebSocketMessages(
         throw new Error("You are not a member of this course");
       }
 
-      const { data, error: insertError } = await supabaseClient
+      // Insert message - Supabase will automatically broadcast to all subscribers
+      const { error: insertError } = await supabaseClient
         .from("messages")
         .insert({
           class_id: classId,
@@ -165,46 +204,8 @@ export function useWebSocketMessages(
 
       if (insertError) throw insertError;
 
-      const messageWithUser: MessageWithUser = {
-        ...data,
-        user: {
-          full_name: `User ${user.id.slice(0, 8)}`,
-          email: "user@email.com",
-        },
-      };
-
-      // Always broadcast the message to all other users
-      if (sseRef.current && sseRef.current.isConnected()) {
-        console.log("Broadcasting message via SSE:", messageWithUser);
-        await sseRef.current.broadcast("message", messageWithUser);
-      } else {
-        console.log("SSE not connected, broadcasting via API fallback");
-        // Fallback: broadcast directly via API if SSE is not connected
-        try {
-          await fetch("/api/chat/broadcast", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              classId,
-              type: "message",
-              data: messageWithUser,
-            }),
-          });
-        } catch (error) {
-          console.error("Fallback broadcast failed:", error);
-        }
-      }
-
-      // Add message to local state immediately for instant feedback
-      setMessages((prev) => {
-        const exists = prev.some(
-          (msg) => msg.message_id === messageWithUser.message_id
-        );
-        if (exists) return prev;
-        return [...prev, messageWithUser];
-      });
+      // No need to manually add to state - the subscription will handle it
+      // This prevents duplicates and ensures all clients get the same message
 
       return true;
     } catch (err: unknown) {
@@ -229,29 +230,7 @@ export function useWebSocketMessages(
 
       if (deleteError) throw deleteError;
 
-      if (sseRef.current && sseRef.current.isConnected()) {
-        console.log("Broadcasting delete via SSE:", messageId);
-        await sseRef.current.broadcast("delete", { messageId });
-      } else {
-        console.log("SSE not connected, broadcasting delete via API fallback");
-        try {
-          await fetch("/api/chat/broadcast", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              classId,
-              type: "delete",
-              data: { messageId },
-            }),
-          });
-        } catch (error) {
-          console.error("Fallback delete broadcast failed:", error);
-        }
-      }
-
-      setMessages((prev) => prev.filter((msg) => msg.message_id !== messageId));
+      // No need to manually remove from state - the subscription will handle it
 
       return true;
     } catch (err: unknown) {
@@ -262,12 +241,6 @@ export function useWebSocketMessages(
       return false;
     }
   };
-
-  useEffect(() => {
-    if (classId && user) {
-      fetchMessages();
-    }
-  }, [classId, user, fetchMessages]);
 
   return {
     messages,
