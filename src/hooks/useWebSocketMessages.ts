@@ -198,9 +198,6 @@ export function useWebSocketMessages(
 
       if (insertError) throw insertError;
 
-      // Optionally refetch messages to ensure UI is updated
-      // The realtime subscription should handle this, but this is a fallback
-      setTimeout(() => fetchMessages(), 100);
 
       return true;
     } catch (err: unknown) {

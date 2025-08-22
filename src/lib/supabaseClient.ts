@@ -38,6 +38,11 @@ export const supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKe
     persistSession: true,
     autoRefreshToken: true,
   },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
 });
 
 export type { Class, Document, Profile } from './types/database';
