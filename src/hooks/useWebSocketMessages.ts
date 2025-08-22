@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { MessageWithUser } from "@/lib/types/database";
 import { User } from "@supabase/supabase-js";
-import { RealtimeChannel } from "@supabase/realtime-js";
 
 interface UseWebSocketMessagesReturn {
   messages: MessageWithUser[];
@@ -24,7 +23,8 @@ export function useWebSocketMessages(
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const getUser = async () => {
@@ -67,6 +67,9 @@ export function useWebSocketMessages(
       );
 
       setMessages(messagesWithUsers);
+      if (messagesWithUsers.length > 0) {
+        lastMessageIdRef.current = messagesWithUsers[messagesWithUsers.length - 1].message_id;
+      }
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch messages";
@@ -83,90 +86,70 @@ export function useWebSocketMessages(
       return;
     }
 
-    console.log(
-      `Setting up Supabase Realtime for class ${classId}, user ${user.id}`
-    );
-
-    // Fetch messages first
+    console.log(`Setting up SSE for class ${classId}, user ${user.id}`);
+    
     fetchMessages();
 
-    const channel = supabaseClient
-      .channel(`class_messages:${classId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `class_id=eq.${classId}`
-        },
-        (payload) => {
-          console.log('New message from Realtime:', payload);
-          const newMessage = payload.new as any;
-          
-          const messageWithUser: MessageWithUser = {
-            ...newMessage,
-            user: {
-              full_name: `User ${newMessage.user_id.slice(0, 8)}`,
-              email: "user@email.com",
-            },
-          };
+    const eventSource = new EventSource(`/api/messages?classId=${classId}`);
+    eventSourceRef.current = eventSource;
 
-          setMessages((prev) => {
-            const exists = prev.some(
-              (msg) => msg.message_id === newMessage.message_id
-            );
-            
-            if (exists) {
-              console.log('Duplicate message detected, skipping:', newMessage.message_id);
-              return prev;
-            }
-            
-            console.log('Adding new message to state:', newMessage.message_id);
-            return [...prev, messageWithUser];
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'messages',
-          filter: `class_id=eq.${classId}`
-        },
-        (payload) => {
-          console.log('Message deleted:', payload);
-          const deletedMessage = payload.old as any;
-          
-          setMessages((prev) =>
-            prev.filter((msg) => msg.message_id !== deletedMessage.message_id)
-          );
-        }
-      )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
-        setConnected(status === 'SUBSCRIBED');
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to Realtime messages');
-          setError(null);
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          console.error('Subscription error:', status);
-          setError('Real-time connection lost');
-        }
-      });
+    eventSource.onopen = () => {
+      console.log('SSE connection opened');
+      setConnected(true);
+      setError(null);
+    };
 
-    channelRef.current = channel;
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'initial') {
+          console.log('Received initial messages:', data.messages);
+          setMessages(data.messages);
+          if (data.messages.length > 0) {
+            lastMessageIdRef.current = data.messages[data.messages.length - 1].message_id;
+          }
+        } else if (data.type === 'new') {
+          console.log('New message from SSE:', data.message);
+          const newMessage = data.message;
+          
+          if (lastMessageIdRef.current !== newMessage.message_id) {
+            setMessages((prev) => {
+              const exists = prev.some((msg) => msg.message_id === newMessage.message_id);
+              if (exists) {
+                console.log('Duplicate message detected, skipping:', newMessage.message_id);
+                return prev;
+              }
+              
+              console.log('Adding new message to state:', newMessage.message_id);
+              lastMessageIdRef.current = newMessage.message_id;
+              return [...prev, newMessage];
+            });
+          }
+        } else if (data.type === 'error') {
+          console.error('SSE error:', data.error);
+          setError(data.error);
+        }
+      } catch (err) {
+        console.error('Error parsing SSE message:', err);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+      setConnected(false);
+      setError('Connection lost');
+    };
 
     return () => {
-      console.log('Cleaning up Realtime subscription');
-      if (channelRef.current) {
-        supabaseClient.removeChannel(channelRef.current);
-        channelRef.current = null;
+      console.log('Cleaning up SSE connection');
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
       }
       setConnected(false);
     };
-  }, [classId, user?.id]);
+  }, [classId, user?.id, fetchMessages]);
 
   const sendMessage = async (content: string): Promise<boolean> => {
     if (!classId || !content.trim() || !user) return false;
@@ -174,30 +157,22 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      const { error: membershipError } = await (supabaseClient
-        .from("user_courses") as any)
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("class_id", classId)
-        .single();
-
-      if (membershipError) {
-        throw new Error("You are not a member of this course");
-      }
-
-      const { error: insertError } = await (supabaseClient
-        .from("messages") as any)
-        .insert({
-          class_id: classId,
-          user_id: user.id,
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          classId,
           content: content.trim(),
-          message_type: "text",
-        })
-        .select()
-        .single();
+          userId: user.id,
+        }),
+      });
 
-      if (insertError) throw insertError;
-
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send message');
+      }
 
       return true;
     } catch (err: unknown) {
