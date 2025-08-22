@@ -199,7 +199,7 @@ export function useWebSocketMessages(
           user_id: user.id,
           content: content.trim(),
           message_type: "text",
-        })
+        } as any)
         .select()
         .single();
 
