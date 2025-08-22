@@ -9,7 +9,7 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import CourseGrid from "./CourseGrid";
 import PageHeader from "./PageHeader";
-import LoadingSpinner from "./LoadingSpinner";
+import LoadingSpinner from "../LoadingSpinner";
 import { Class } from "@/lib/types/database";
 
 export default function Dashboard() {

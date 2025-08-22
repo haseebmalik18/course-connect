@@ -3,8 +3,45 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { validateCunyEmail, getCunyEmailErrorMessage } from "@/lib/validation";
+import LoadingSpinner from "@/components/LoadingSpinner";
+
+// Function to parse email and extract first and last name
+const parseEmailToFullName = (email: string): string => {
+  // Remove the @domain part
+  const localPart = email.split('@')[0];
+  
+  // Split by dots
+  const parts = localPart.split('.');
+  
+  console.log("Parsing email parts:", { localPart, parts });
+  
+  // Filter out parts that are ONLY numbers (like "70")
+  const nameParts = parts.filter(part => {
+    // Keep parts that contain letters, even if they also contain numbers
+    return /[a-zA-Z]/.test(part);
+  });
+  
+  console.log("Filtered name parts:", nameParts);
+  
+  if (nameParts.length >= 2) {
+    // Convert to title case and join, removing any remaining numbers
+    const firstName = nameParts[0].replace(/\d+/g, '').charAt(0).toUpperCase() + nameParts[0].replace(/\d+/g, '').slice(1).toLowerCase();
+    const lastName = nameParts[1].replace(/\d+/g, '').charAt(0).toUpperCase() + nameParts[1].replace(/\d+/g, '').slice(1).toLowerCase();
+    return `${firstName} ${lastName}`;
+  } else if (nameParts.length === 1) {
+    // If only one part, capitalize it and remove numbers
+    const cleanPart = nameParts[0].replace(/\d+/g, '');
+    return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
+  }
+  
+  // Fallback: return the local part without numbers
+  return localPart.replace(/\d+/g, '').replace(/\./g, ' ');
+};
 
 export default function Register() {
+  // Test the parsing function with a sample email
+  console.log("Testing email parsing:", parseEmailToFullName("faikar.herzaman70@myhunter.cuny.edu"));
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -53,26 +90,98 @@ export default function Register() {
         throw new Error(signUpError.message);
       }
 
-      if (data.user && data.session) {
-        console.log("User created and logged in successfully:", data.user);
-        window.location.href = "/dashboard";
-      } else if (data.user) {
+      if (data.user) {
         console.log("User created successfully:", data.user);
-        window.location.href = "/dashboard";
+        
+        // Parse email to get full name
+        const fullName = parseEmailToFullName(email);
+        console.log("Original email:", email);
+        console.log("Parsed full name:", fullName);
+        console.log("Parsing breakdown:", {
+          localPart: email.split('@')[0],
+          parts: email.split('@')[0].split('.').filter(part => !/\d+/.test(part)),
+          fullName
+        });
+        
+        // Insert profile record
+        try {
+          console.log("Attempting to insert profile with data:", {
+            id: data.user.id,
+            email: email.toLowerCase(),
+            full_name: fullName,
+          });
+
+          // First, let's check if a profile already exists
+          const { data: existingProfile, error: checkError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+          if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+            console.error("Error checking existing profile:", checkError);
+          } else if (existingProfile) {
+            console.log("Profile already exists:", existingProfile);
+            // Try to update instead
+            const { data: updateData, error: updateError } = await supabase
+              .from('profiles')
+              .update({ full_name: fullName })
+              .eq('id', data.user.id)
+              .select();
+
+            if (updateError) {
+              console.error("Profile update error:", updateError);
+              setError(`Account created but profile update failed: ${updateError.message}`);
+            } else {
+              console.log("Profile updated successfully:", updateData);
+            }
+          } else {
+            // Insert new profile
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .insert({
+                id: data.user.id,
+                email: email.toLowerCase(),
+                full_name: fullName,
+                // major, year, and college will be null for now as requested
+              })
+              .select(); // Add select to see what was actually inserted
+
+            if (profileError) {
+              console.error("Profile creation error:", profileError);
+              // Show error to user but don't prevent redirect
+              setError(`Account created but profile setup failed: ${profileError.message}`);
+            } else {
+              console.log("Profile created successfully:", profileData);
+            }
+          }
+        } catch (profileErr) {
+          console.error("Profile creation failed:", profileErr);
+          // Show error to user but don't prevent redirect
+          setError(`Account created but profile setup failed: ${profileErr instanceof Error ? profileErr.message : 'Unknown error'}`);
+        }
+
+        // Redirect to dashboard after a short delay to show any errors
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 3000);
       } else {
         throw new Error("No user data returned");
       }
     } catch (err) {
       console.error("Registration error:", err);
       setError(err instanceof Error ? err.message : "Registration failed");
-    } finally {
-      setLoading(false);
+      setLoading(false); // Only set loading to false on error
     }
+    // Remove the finally block - don't set loading to false on success
   };
 
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <>
+      {/* Full-screen loading overlay */}
+      {loading && <LoadingSpinner message="Creating your account..." size="lg" />}
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm animate-in slide-in-from-top duration-300">
           {error}
@@ -214,5 +323,6 @@ export default function Register() {
         </span>
       </button>
     </form>
+    </>
   );
 }
