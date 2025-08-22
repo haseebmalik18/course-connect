@@ -116,14 +116,23 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const { error: membershipError } = await (supabaseClient
+    const { data: membership, error: membershipError } = await (supabaseClient
       .from("user_courses") as any)
       .select("role")
       .eq("user_id", userId)
       .eq("class_id", classId)
       .single();
 
-    if (membershipError) {
+    const { data: courseData, error: courseError } = await (supabaseClient
+      .from("class") as any)
+      .select("created_by")
+      .eq("class_id", classId)
+      .single();
+
+    const isCreator = courseData?.created_by === userId;
+    const isMember = membership && !membershipError;
+
+    if (!isCreator && !isMember) {
       return Response.json({ error: 'You are not a member of this course' }, { status: 403 });
     }
 
