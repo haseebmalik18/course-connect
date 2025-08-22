@@ -213,7 +213,7 @@ export async function getDocumentsByClass(
 
     if (error) throw error;
 
-    const docsWithUsers = (data || []).map(doc => ({
+    const docsWithUsers = (data || []).map((doc: any) => ({
       ...doc,
       user: {
         full_name: `User ${doc.created_by.slice(0, 8)}`,
