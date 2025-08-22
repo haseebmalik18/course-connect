@@ -160,8 +160,7 @@ export function useWebSocketMessages(
 
       if (insertError) throw insertError;
 
-      // Broadcast to other connected clients via SSE
-      if (chatSSERef.current && newMessage) {
+      if (newMessage) {
         const messageWithUser = {
           ...newMessage,
           user: {
@@ -170,7 +169,19 @@ export function useWebSocketMessages(
           },
         };
         
-        await chatSSERef.current.broadcast('message', messageWithUser);
+        // Add to sender's local state immediately for instant feedback
+        setMessages((prev) => {
+          const exists = prev.some(
+            (msg) => msg.message_id === newMessage.message_id
+          );
+          if (exists) return prev;
+          return [...prev, messageWithUser];
+        });
+        
+        // Broadcast to other connected clients via SSE (excludes sender)
+        if (chatSSERef.current) {
+          await chatSSERef.current.broadcast('message', messageWithUser);
+        }
       }
 
       return true;
