@@ -68,7 +68,7 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <header className="bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-sm shadow-blue-100/50 sticky top-0 z-40">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Mobile Menu Button */}
@@ -82,7 +82,7 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
                   d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
               </svg>
             </button>
-            <h1 className="ml-2 lg:ml-0 text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+            <h1 className="ml-2 lg:ml-0 text-2xl font-semibold text-blue-600">
               CourseConnect
             </h1>
           </div>
@@ -107,7 +107,7 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                <p className="text-base font-medium text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
                   Hello, {firstName}
                 </p>
               </div>

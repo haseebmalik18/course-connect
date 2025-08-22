@@ -9,42 +9,45 @@ interface CourseCardProps {
 
 export default function CourseCard({ course, onClick }: CourseCardProps) {
   const colors = [
-    "from-green-400 to-green-600",
-    "from-blue-400 to-blue-600", 
-    "from-purple-400 to-purple-600",
-    "from-orange-400 to-orange-600",
-    "from-pink-400 to-pink-600",
-    "from-red-400 to-red-600",
-    "from-yellow-400 to-yellow-600",
-    "from-indigo-400 to-indigo-600"
+    "from-blue-500 to-indigo-600",
+    "from-purple-500 to-pink-600", 
+    "from-green-500 to-emerald-600",
+    "from-orange-500 to-red-500",
+    "from-teal-500 to-cyan-600",
+    "from-violet-500 to-purple-600",
+    "from-rose-500 to-pink-600",
+    "from-amber-500 to-orange-600"
   ];
   
-  const colorIndex = parseInt(course.class_id) % colors.length;
-  const color = colors[colorIndex];
+  const colorIndex = Math.abs(course.class_id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % colors.length;
+  const color = colors[colorIndex] || colors[0];
 
   return (
     <div
       onClick={() => onClick(course.class_id)}
-      className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all cursor-pointer group hover:-translate-y-1"
+      className="group bg-white/70 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-white/50 hover:shadow-2xl hover:shadow-gray-400/20 hover:-translate-y-3 hover:border-white/80 hover:bg-white/90 transition-all duration-500 cursor-pointer"
     >
-      <div className={`h-2 w-full bg-gradient-to-r ${color} rounded-full mb-4 group-hover:shadow-md transition-all`}></div>
+      {/* Top accent bar */}
+      <div className={`h-1.5 w-full bg-gradient-to-r ${color} rounded-full mb-4 shadow-sm`}></div>
       
-      <h3 className="text-lg font-bold text-gray-900 mb-1">{course.class_subject} {course.class_number}</h3>
-      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.college_name}</p>
+      <div className="flex items-start justify-between mb-4">
+        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200/50 rounded-xl flex items-center justify-center mb-4 group-hover:from-blue-200 group-hover:to-blue-300/60 group-hover:scale-110 transition-all duration-300 shadow-sm group-hover:shadow-md">
+          <svg className="w-6 h-6 text-blue-600 group-hover:text-blue-700 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+      </div>
       
-      <div className="flex justify-between text-sm">
-        <div className="flex items-center space-x-1 text-gray-500">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <span>{course.member_count || 0} members</span>
-        </div>
-        <div className="flex items-center space-x-1 text-gray-500">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
-          <span>{course.document_count || 0} files</span>
-        </div>
+      <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-300">
+        {course.class_subject} {course.class_number}
+      </h3>
+      <p className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300 mb-4">
+        {course.college_name}
+      </p>
+      
+      <div className="flex justify-between text-sm text-gray-500 group-hover:text-gray-600 transition-colors duration-300">
+        <span>{course.member_count || 0} members</span>
+        <span>{course.document_count || 0} files</span>
       </div>
     </div>
   );

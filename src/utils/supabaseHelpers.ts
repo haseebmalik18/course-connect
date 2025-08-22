@@ -492,6 +492,64 @@ export function getTimeAgo(date: string | Date): string {
 }
 
 /**
+ * Fetch enrolled users for a specific course
+ */
+export async function getEnrolledUsers(
+  classId: string
+): Promise<{ data: any[]; error: Error | null }> {
+  try {
+    const { data, error } = await supabaseClient
+      .from('user_courses')
+      .select(`
+        user_id,
+        role,
+        joined_at,
+        profiles (
+          full_name,
+          email,
+          major,
+          year,
+          college
+        )
+      `)
+      .eq('class_id', classId)
+      .order('joined_at', { ascending: true });
+
+    if (error) throw error;
+
+    console.log('Raw enrollments with profiles:', data);
+
+    if (!data || data.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Transform the data to include user profile information
+    const enrolledUsers = data.map((enrollment: any) => {
+      const profile = enrollment.profiles;
+      const fullName = profile?.full_name || 'Anonymous User';
+      
+      return {
+        id: enrollment.user_id,
+        name: fullName,
+        email: profile?.email || 'unknown@cuny.edu',
+        major: profile?.major || 'Unknown',
+        year: profile?.year || 'Unknown',
+        college: profile?.college || 'CUNY',
+        role: enrollment.role,
+        joined_at: enrollment.joined_at,
+        avatar: fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+      };
+    });
+
+    console.log('Final enrolled users:', enrolledUsers);
+    return { data: enrolledUsers, error: null };
+  } catch (error: any) {
+    console.error('Error fetching enrolled users:', error);
+    return { data: [], error };
+  }
+}
+
+/**
  * Validate CUNY email address
  */
 export function isValidCunyEmail(email: string): boolean {

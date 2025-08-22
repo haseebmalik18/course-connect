@@ -5,10 +5,12 @@ import DocumentCard from "./DocumentCard";
 
 interface DocumentGridProps {
   documents: DocumentWithUser[];
+  currentUserId?: string;
   onDownload: (docPath: string, fileName: string) => void;
+  onDelete?: (docId: string) => void;
 }
 
-export default function DocumentGrid({ documents, onDownload }: DocumentGridProps) {
+export default function DocumentGrid({ documents, currentUserId, onDownload, onDelete }: DocumentGridProps) {
   if (documents.length === 0) {
     return (
       <div className="text-center py-12">
@@ -29,7 +31,9 @@ export default function DocumentGrid({ documents, onDownload }: DocumentGridProp
         <DocumentCard
           key={doc.doc_id}
           doc={doc}
+          currentUserId={currentUserId}
           onDownload={onDownload}
+          onDelete={onDelete}
         />
       ))}
     </div>

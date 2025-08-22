@@ -6,6 +6,7 @@ import { useDocuments } from "@/hooks/useDocuments";
 import { useCourse } from "@/hooks/useCourses";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocketMessages } from "@/hooks/useWebSocketMessages";
+import { getEnrolledUsers, deleteDocument } from "@/utils/supabaseHelpers";
 import DocumentUpload from "./DocumentUpload";
 import DocumentSection from "./DocumentSection";
 import ChatMessage from "../chat/ChatMessage";
@@ -16,76 +17,23 @@ interface Person {
   email: string;
   major: string;
   year: string;
+  college?: string;
   avatar: string;
-  role: "mentor" | "peer";
+  role: "owner" | "student" | "mentor";
+  joined_at?: string;
 }
 
 interface CourseDetailProps {
   classId: string;
 }
 
-const samplePeople: Person[] = [
-  {
-    id: "1",
-    name: "Sarah Chen",
-    email: "sarah.chen@hunter.cuny.edu",
-    major: "Biology",
-    year: "Senior",
-    avatar: "SC",
-    role: "mentor"
-  },
-  {
-    id: "2",
-    name: "Michael Rodriguez",
-    email: "michael.r@baruch.cuny.edu",
-    major: "Pre-Med",
-    year: "Junior",
-    avatar: "MR",
-    role: "mentor"
-  },
-  {
-    id: "3",
-    name: "Emily Johnson",
-    email: "emily.j@ccny.cuny.edu",
-    major: "Biochemistry",
-    year: "Senior",
-    avatar: "EJ",
-    role: "mentor"
-  },
-  {
-    id: "4",
-    name: "Alex Kim",
-    email: "alex.kim@qc.cuny.edu",
-    major: "Biology",
-    year: "Sophomore",
-    avatar: "AK",
-    role: "peer"
-  },
-  {
-    id: "5",
-    name: "Jessica Liu",
-    email: "jessica.liu@hunter.cuny.edu",
-    major: "Neuroscience",
-    year: "Sophomore",
-    avatar: "JL",
-    role: "peer"
-  },
-  {
-    id: "6",
-    name: "David Park",
-    email: "david.p@brooklyn.cuny.edu",
-    major: "Biology",
-    year: "Freshman",
-    avatar: "DP",
-    role: "peer"
-  }
-];
-
-
 export default function CourseDetail({ classId }: CourseDetailProps) {
   const [activeTab, setActiveTab] = useState<"materials" | "people" | "chat">("materials");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [messageInput, setMessageInput] = useState("");
+  const [enrolledUsers, setEnrolledUsers] = useState<Person[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useAuth();
   const { course, loading: courseLoading, error: courseError } = useCourse(classId);
@@ -94,6 +42,29 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
 
   const courseCode = course ? `${course.class_subject} ${course.class_number}` : "Loading...";
   const courseName = course ? course.college_name : "Loading...";
+
+  // Fetch enrolled users when component mounts or classId changes
+  useEffect(() => {
+    const fetchEnrolledUsers = async () => {
+      setUsersLoading(true);
+      setUsersError(null);
+      
+      try {
+        const { data, error } = await getEnrolledUsers(classId);
+        if (error) throw error;
+        setEnrolledUsers(data);
+      } catch (err: any) {
+        console.error('Error fetching enrolled users:', err);
+        setUsersError(err.message || 'Failed to load enrolled users');
+      } finally {
+        setUsersLoading(false);
+      }
+    };
+
+    if (classId) {
+      fetchEnrolledUsers();
+    }
+  }, [classId]);
   
   const colors = [
     "from-green-400 to-green-600",
@@ -160,8 +131,24 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
     }
   };
 
-  const mentors = samplePeople.filter(p => p.role === "mentor");
-  const peers = samplePeople.filter(p => p.role === "peer");
+  const handleDeleteDocument = async (docId: string) => {
+    try {
+      const result = await deleteDocument(docId);
+      if (result.success) {
+        // Refetch documents to update the list
+        window.location.reload(); // Simple refresh for now
+      } else {
+        console.error('Delete failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
+    }
+  };
+
+  // Group users by role
+  const owners = enrolledUsers.filter(p => p.role === "owner");
+  const mentors = enrolledUsers.filter(p => p.role === "mentor");
+  const students = enrolledUsers.filter(p => p.role === "student");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -218,72 +205,157 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
             documents={documents}
             loading={documentsLoading}
             error={documentsError}
+            currentUserId={user?.id}
             onUpload={handleUpload}
             onDownload={handleDownload}
+            onDelete={handleDeleteDocument}
           />
         )}
 
         {activeTab === "people" && (
           <div className="space-y-8">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Mentors (Already Took This Course)
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mentors.map(person => (
-                  <div key={person.id} className="bg-white rounded-lg border border-gray-200 p-4">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        {person.avatar}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{person.name}</h3>
-                        <p className="text-sm text-gray-600">{person.year} • {person.major}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleMessage(person)}
-                      className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      <span>Message</span>
-                    </button>
-                  </div>
-                ))}
+            {usersLoading && (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Study Buddies (Taking Now)
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {peers.map(person => (
-                  <div key={person.id} className="bg-white rounded-lg border border-gray-200 p-4">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        {person.avatar}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{person.name}</h3>
-                        <p className="text-sm text-gray-600">{person.year} • {person.major}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleMessage(person)}
-                      className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-md transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      <span>Message</span>
-                    </button>
-                  </div>
-                ))}
+            {usersError && (
+              <div className="flex justify-center items-center py-8">
+                <div className="text-center">
+                  <svg className="w-12 h-12 text-red-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-red-600 font-medium">Error loading people</p>
+                  <p className="text-gray-600 text-sm">{usersError}</p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {!usersLoading && !usersError && (
+              <>
+                {/* Course Owners */}
+                {owners.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                      Course Creator{owners.length > 1 ? 's' : ''} ({owners.length})
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {owners.map(person => (
+                        <div key={person.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                              {person.avatar}
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-900">{person.name}</h3>
+                              <p className="text-sm text-gray-600">{person.year} • {person.major}</p>
+                              <p className="text-xs text-purple-600 font-medium">Creator</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleMessage(person)}
+                            className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-md transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span>Message</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mentors */}
+                {mentors.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                      Mentors ({mentors.length})
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {mentors.map(person => (
+                        <div key={person.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                              {person.avatar}
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-900">{person.name}</h3>
+                              <p className="text-sm text-gray-600">{person.year} • {person.major}</p>
+                              <p className="text-xs text-blue-600 font-medium">Mentor</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleMessage(person)}
+                            className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span>Message</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Students */}
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Students ({students.length})
+                  </h2>
+                  {students.length === 0 ? (
+                    <div className="text-center py-8">
+                      <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857M17 7a3 3 0 11-6 0 3 3 0 016 0zm-6 0a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No students yet</h3>
+                      <p className="text-gray-600">Students who join this course will appear here</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {students.map(person => (
+                        <div key={person.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-semibold">
+                              {person.avatar}
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-900">{person.name}</h3>
+                              <p className="text-sm text-gray-600">{person.year} • {person.major}</p>
+                              <p className="text-xs text-green-600 font-medium">Student</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleMessage(person)}
+                            className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-md transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span>Message</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Total Count */}
+                {enrolledUsers.length === 0 && !usersLoading && (
+                  <div className="text-center py-8">
+                    <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857M17 7a3 3 0 11-6 0 3 3 0 016 0zm-6 0a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No one has joined yet</h3>
+                    <p className="text-gray-600">Be the first to join this course!</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
