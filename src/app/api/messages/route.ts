@@ -103,7 +103,8 @@ export async function GET(request: NextRequest) {
                   };
                   sendMessage({ type: "new", message: messageWithUser });
                 });
-                lastMessageTime = messages[messages.length - 1].created_at;
+                const lastMessage = messages[messages.length - 1] as any;
+                lastMessageTime = lastMessage.created_at;
               }
             } catch (error) {
               console.error("Error polling messages:", error);
