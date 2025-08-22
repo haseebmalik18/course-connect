@@ -88,28 +88,34 @@ export function useWebSocketMessages(
     // Set up SSE connection
     const chatSSE = new ChatSSE(classId, user.id, {
       onMessage: (message: MessageWithUser) => {
+        console.log('Received message via SSE:', message);
         setMessages((prev) => {
           const exists = prev.some(
             (msg) => msg.message_id === message.message_id
           );
           
           if (exists) {
+            console.log('Message already exists, skipping');
             return prev;
           }
           
+          console.log('Adding new message to state');
           return [...prev, message];
         });
       },
       onDelete: (messageId: string) => {
+        console.log('Received delete via SSE:', messageId);
         setMessages((prev) =>
           prev.filter((msg) => msg.message_id !== messageId)
         );
       },
       onConnect: () => {
+        console.log('SSE connected for user:', user.id, 'class:', classId);
         setConnected(true);
         setError(null);
       },
       onDisconnect: () => {
+        console.log('SSE disconnected for user:', user.id, 'class:', classId);
         setConnected(false);
         setError('Real-time connection lost');
       }
@@ -180,7 +186,10 @@ export function useWebSocketMessages(
         
         // Broadcast to other connected clients via SSE (excludes sender)
         if (chatSSERef.current) {
+          console.log('Broadcasting message to other users:', messageWithUser);
           await chatSSERef.current.broadcast('message', messageWithUser);
+        } else {
+          console.log('No SSE connection available for broadcast');
         }
       }
 

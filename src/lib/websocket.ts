@@ -66,6 +66,7 @@ export class ChatSSE {
               break;
           }
         } catch (error) {
+          console.error('Error parsing SSE message:', error);
         }
       };
 
@@ -105,9 +106,10 @@ export class ChatSSE {
       });
 
       if (!response.ok) {
-        throw new Error('Broadcast failed');
+        throw new Error(`Broadcast failed: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
+      console.error('Broadcast error:', error);
     }
   }
 
