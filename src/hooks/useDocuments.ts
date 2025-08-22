@@ -87,13 +87,16 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         fileSize: file.size,
       });
 
-      const { data: membership, error: membershipError } = await (
+      const { data: membershipData, error: membershipError } = await (
         supabaseClient.from("user_courses") as any
       )
         .select("role")
         .eq("user_id", user.id)
         .eq("class_id", classId)
         .single();
+
+      // Explicitly type the membership to avoid TypeScript inference issues
+      const membership: { role: string } | null = membershipData;
 
       if (membershipError) {
         console.error("Class membership error:", membershipError);

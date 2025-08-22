@@ -220,12 +220,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check user membership with better error handling
-    const { data: membership, error: membershipError } = await supabase
+    const { data: membershipData, error: membershipError } = await supabase
       .from("user_courses")
       .select("role")
       .eq("user_id", userId)
       .eq("class_id", classId)
       .single();
+
+    // Explicitly type the membership to avoid TypeScript inference issues
+    const membership: { role: string } | null = membershipData;
 
     console.log("Membership check result:", { membership, membershipError });
 
