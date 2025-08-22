@@ -285,8 +285,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert message with better error handling
-    const { data, error } = await supabase
-      .from("messages")
+    const { data, error } = await (supabase.from("messages") as any)
       .insert({
         class_id: classId,
         user_id: userId,
