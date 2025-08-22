@@ -30,15 +30,15 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabaseClient
-        .from('document')
+      const { data, error: fetchError } = await (supabaseClient
+        .from('document') as any)
         .select('doc_id, class_id, doc_path, doc_type, created_by, created_at, doc_name')
         .eq('class_id', classId)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 
-      const docsWithUsers = (data || []).map(doc => ({
+      const docsWithUsers = (data || []).map((doc: any) => ({
         ...doc,
         user: {
           full_name: `User ${doc.created_by.slice(0, 8)}`,
