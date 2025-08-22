@@ -87,10 +87,8 @@ export function useWebSocketMessages(
       `Setting up Supabase Realtime for class ${classId}, user ${user.id}`
     );
 
-    // Fetch existing messages first
     fetchMessages();
 
-    // Set up Supabase Realtime subscription
     const channel = supabaseClient
       .channel(`class_messages:${classId}`)
       .on(
@@ -105,7 +103,6 @@ export function useWebSocketMessages(
           console.log('New message from Realtime:', payload);
           const newMessage = payload.new as any;
           
-          // Create message with user info
           const messageWithUser: MessageWithUser = {
             ...newMessage,
             user: {
@@ -114,9 +111,7 @@ export function useWebSocketMessages(
             },
           };
 
-          // Add message to state, checking for duplicates
           setMessages((prev) => {
-            // Check for duplicate using message_id
             const exists = prev.some(
               (msg) => msg.message_id === newMessage.message_id
             );
@@ -162,7 +157,6 @@ export function useWebSocketMessages(
 
     channelRef.current = channel;
 
-    // Cleanup on unmount
     return () => {
       console.log('Cleaning up Realtime subscription');
       if (channelRef.current) {
@@ -179,7 +173,6 @@ export function useWebSocketMessages(
     setError(null);
 
     try {
-      // Check membership first
       const { error: membershipError } = await supabaseClient
         .from("user_courses")
         .select("role")
@@ -191,7 +184,6 @@ export function useWebSocketMessages(
         throw new Error("You are not a member of this course");
       }
 
-      // Insert message - Supabase Realtime will automatically broadcast to ALL subscribers
       const { error: insertError } = await supabaseClient
         .from("messages")
         .insert({
@@ -205,9 +197,6 @@ export function useWebSocketMessages(
 
       if (insertError) throw insertError;
 
-      // Note: We don't add to local state here because the Realtime subscription
-      // will receive the INSERT event and add it for us (including for the sender)
-      // This ensures consistency across all clients
 
       return true;
     } catch (err: unknown) {
@@ -232,8 +221,6 @@ export function useWebSocketMessages(
 
       if (deleteError) throw deleteError;
 
-      // The DELETE event will be broadcasted via Realtime to all clients
-      // including the one who deleted it
 
       return true;
     } catch (err: unknown) {

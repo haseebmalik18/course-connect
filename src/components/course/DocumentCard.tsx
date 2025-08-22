@@ -17,7 +17,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
   const isOwner = currentUserId && doc.created_by === currentUserId;
   
   const getDocIcon = (docType: string, fileExt: string) => {
-    // For PDFs and images, we can show previews
     if (fileExt === 'pdf') {
       return (
         <div className="w-12 h-12 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center">
@@ -36,8 +35,7 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
             alt="Document preview"
             className="w-full h-full object-cover rounded-lg"
             onError={(e) => {
-              // Fallback to icon if image fails to load
-              e.currentTarget.style.display = 'none';
+                e.currentTarget.style.display = 'none';
               e.currentTarget.parentElement!.innerHTML = `
                 <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -49,7 +47,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
       );
     }
     
-    // Fallback icons for other file types
     const iconMap: { [key: string]: { icon: string; color: string; bg: string } } = {
       document: { 
         icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>`, 
@@ -94,7 +91,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
   };
 
   const getThumbnail = () => {
-    // For PDFs, show a document preview placeholder
     if (fileExt === 'pdf') {
       return (
         <div className="w-full h-32 bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-lg flex flex-col items-center justify-center mb-3 group-hover:from-red-100 group-hover:to-red-150 transition-colors">
@@ -106,7 +102,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
       );
     }
     
-    // For images, show actual preview
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt)) {
       return (
         <div className="w-full h-32 bg-gray-100 border border-gray-200 rounded-lg overflow-hidden mb-3">
@@ -115,7 +110,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
             alt="Document preview"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
             onError={(e) => {
-              // Fallback to placeholder if image fails
               e.currentTarget.parentElement!.innerHTML = `
                 <div class="w-full h-full bg-gray-100 flex flex-col items-center justify-center">
                   <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +124,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
       );
     }
     
-    // For other file types, show themed placeholder
     const typeColors: { [key: string]: { bg: string; text: string; name: string } } = {
       document: { bg: 'from-blue-50 to-blue-100 border-blue-200', text: 'text-blue-600', name: 'Document' },
       presentation: { bg: 'from-orange-50 to-orange-100 border-orange-200', text: 'text-orange-600', name: 'Presentation' },
@@ -169,7 +162,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
 
   return (
     <div className="group bg-white rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer relative">
-      {/* Delete button for owners */}
       {isOwner && (
         <button
           onClick={handleDeleteConfirm}
@@ -182,7 +174,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
         </button>
       )}
 
-      {/* Delete confirmation overlay */}
       {showDeleteConfirm && (
         <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-20 border border-red-200">
           <svg className="w-8 h-8 text-red-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,10 +200,8 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
         </div>
       )}
 
-      {/* Thumbnail Preview */}
       {getThumbnail()}
       
-      {/* Document Info */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-gray-900 truncate">
           {doc.doc_name || fileName.replace(/\.[^/.]+$/, "")}
@@ -229,7 +218,6 @@ export default function DocumentCard({ doc, currentUserId, onDownload, onDelete 
         </p>
       </div>
       
-      {/* Action buttons */}
       <div className="mt-3 space-y-2">
         <button
           onClick={handleDownload}

@@ -27,7 +27,6 @@ export default function CourseCard({ course, onClick }: CourseCardProps) {
       onClick={() => onClick(course.class_id)}
       className="group bg-white/70 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-white/50 hover:shadow-2xl hover:shadow-gray-400/20 hover:-translate-y-3 hover:border-white/80 hover:bg-white/90 transition-all duration-500 cursor-pointer"
     >
-      {/* Top accent bar */}
       <div className={`h-1.5 w-full bg-gradient-to-r ${color} rounded-full mb-4 shadow-sm`}></div>
       
       <div className="flex items-start justify-between mb-4">

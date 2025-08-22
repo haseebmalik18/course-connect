@@ -77,7 +77,7 @@ export default function LandingPage() {
 
       <section className="relative px-6 py-20 bg-gradient-to-b from-gray-50/80 to-white/90 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 gap-8">
             <div className="group bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-sm border border-white/20 hover:shadow-2xl hover:shadow-blue-100/20 hover:-translate-y-2 hover:bg-white/90 transition-all duration-500 cursor-pointer animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200/50 rounded-xl flex items-center justify-center mb-6 group-hover:from-blue-200 group-hover:to-blue-300/60 group-hover:scale-110 transition-all duration-300 shadow-sm group-hover:shadow-md">
                 <svg
@@ -103,30 +103,6 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="group bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-sm border border-white/20 hover:shadow-2xl hover:shadow-blue-100/20 hover:-translate-y-2 hover:bg-white/90 transition-all duration-500 cursor-pointer animate-in fade-in slide-in-from-bottom duration-1000 delay-500">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200/50 rounded-xl flex items-center justify-center mb-6 group-hover:from-blue-200 group-hover:to-blue-300/60 group-hover:scale-110 transition-all duration-300 shadow-sm group-hover:shadow-md">
-                <svg
-                  className="w-6 h-6 text-blue-600 group-hover:text-blue-700 transition-colors duration-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-300">
-                Find Mentors
-              </h3>
-              <p className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
-                Connect with students who&apos;ve succeeded in your courses for
-                guidance.
-              </p>
-            </div>
 
             <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-500 cursor-pointer animate-in fade-in slide-in-from-bottom duration-1000 delay-700">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200/50 rounded-xl flex items-center justify-center mb-6 group-hover:from-blue-200 group-hover:to-blue-300/60 group-hover:scale-110 transition-all duration-300 shadow-sm group-hover:shadow-md">

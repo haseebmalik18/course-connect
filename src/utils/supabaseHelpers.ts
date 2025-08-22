@@ -1,13 +1,7 @@
 import { supabaseClient, Class, Document } from '@/lib/supabaseClient';
 import { ClassWithStats, DocumentWithUser } from '@/lib/types/database';
 
-// ============================================
-// Course/Class Helper Functions
-// ============================================
 
-/**
- * Fetch all courses with optional filtering
- */
 export async function getCourses(options?: {
   userId?: string;
   college?: string;
@@ -16,13 +10,11 @@ export async function getCourses(options?: {
   offset?: number;
 }): Promise<{ data: ClassWithStats[]; error: Error | null }> {
   try {
-    // First, get all courses
     let query = supabaseClient
       .from('class')
       .select('*')
       .order('created_at', { ascending: false });
 
-    // Apply filters
     if (options?.userId) {
       query = query.eq('created_by', options.userId);
     }
@@ -43,11 +35,9 @@ export async function getCourses(options?: {
 
     if (error) throw error;
 
-    // For each course, get the document count separately
     const coursesWithStats = await Promise.all(
       (courses || []).map(async (course) => {
         try {
-          // Get document count for this course
           const { count: docCount, error: countError } = await supabaseClient
             .from('document')
             .select('*', { count: 'exact', head: true })
@@ -57,7 +47,6 @@ export async function getCourses(options?: {
             console.warn(`Error getting document count for course ${course.class_id}:`, countError);
           }
 
-          // Get member count for this course
           const { count: memberCount, error: memberError } = await supabaseClient
             .from('user_courses')
             .select('*', { count: 'exact', head: true })
@@ -90,9 +79,6 @@ export async function getCourses(options?: {
   }
 }
 
-/**
- * Fetch a single course by ID
- */
 export async function getCourseById(
   classId: string
 ): Promise<{ data: ClassWithStats | null; error: Error | null }> {
@@ -105,7 +91,6 @@ export async function getCourseById(
 
     if (error) throw error;
 
-    // Get document count for this course
     const { count: docCount, error: countError } = await supabaseClient
       .from('document')
       .select('*', { count: 'exact', head: true })
@@ -115,7 +100,6 @@ export async function getCourseById(
       console.warn(`Error getting document count for course ${classId}:`, countError);
     }
 
-    // Get member count for this course
     const { count: memberCount, error: memberError } = await supabaseClient
       .from('user_courses')
       .select('*', { count: 'exact', head: true })
@@ -138,16 +122,12 @@ export async function getCourseById(
   }
 }
 
-/**
- * Create a new course
- */
 export async function createCourse(courseData: {
   college_name: string;
   class_subject: string;
   class_number: number;
 }): Promise<{ data: Class | null; error: Error | null }> {
   try {
-    // Get current user
     const { data: { user } } = await supabaseClient.auth.getUser();
     
     if (!user) {
@@ -172,9 +152,6 @@ export async function createCourse(courseData: {
   }
 }
 
-/**
- * Update a course
- */
 export async function updateCourse(
   classId: string,
   updates: Partial<Pick<Class, 'college_name' | 'class_subject' | 'class_number'>>
@@ -196,14 +173,10 @@ export async function updateCourse(
   }
 }
 
-/**
- * Delete a course and its documents
- */
 export async function deleteCourse(
   classId: string
 ): Promise<{ success: boolean; error: Error | null }> {
   try {
-    // First delete all associated documents
     const { error: docsError } = await supabaseClient
       .from('document')
       .delete()
@@ -213,7 +186,6 @@ export async function deleteCourse(
       console.warn('Error deleting course documents:', docsError);
     }
 
-    // Then delete the course
     const { error } = await supabaseClient
       .from('class')
       .delete()
@@ -228,13 +200,7 @@ export async function deleteCourse(
   }
 }
 
-// ============================================
-// Document Helper Functions
-// ============================================
 
-/**
- * Fetch documents for a specific class
- */
 export async function getDocumentsByClass(
   classId: string
 ): Promise<{ data: DocumentWithUser[]; error: Error | null }> {
@@ -247,7 +213,6 @@ export async function getDocumentsByClass(
 
     if (error) throw error;
 
-    // Add placeholder user info
     const docsWithUsers = (data || []).map(doc => ({
       ...doc,
       user: {
@@ -263,9 +228,6 @@ export async function getDocumentsByClass(
   }
 }
 
-/**
- * Upload a document to storage and create database record
- */
 export async function uploadDocument(
   file: File,
   classId: string,
@@ -275,18 +237,15 @@ export async function uploadDocument(
   }
 ): Promise<{ data: Document | null; error: Error | null }> {
   try {
-    // Get current user
     const { data: { user } } = await supabaseClient.auth.getUser();
     
     if (!user) {
       throw new Error('User must be authenticated to upload documents');
     }
 
-    // Create unique file path
     const fileExt = file.name.split('.').pop();
     const fileName = `${classId}/${user.id}/${Date.now()}-${file.name}`;
 
-    // Upload to storage
     const { data: uploadData, error: uploadError } = await supabaseClient.storage
       .from('documents')
       .upload(fileName, file, {
@@ -296,15 +255,12 @@ export async function uploadDocument(
 
     if (uploadError) throw uploadError;
 
-    // Get public URL
     const { data: { publicUrl } } = supabaseClient.storage
       .from('documents')
       .getPublicUrl(fileName);
 
-    // Determine document type
     const docType = getDocumentType(file.name);
 
-    // Create database record
     const { data, error } = await supabaseClient
       .from('document')
       .insert({
@@ -319,9 +275,7 @@ export async function uploadDocument(
 
     if (error) throw error;
 
-    // Update the doc_count in the class table
     try {
-      // First get the current class to check if doc_count exists
       const { data: currentClass, error: fetchError } = await supabaseClient
         .from('class')
         .select('doc_count')
@@ -343,7 +297,6 @@ export async function uploadDocument(
       }
     } catch (countError) {
       console.warn('Error updating document count:', countError);
-      // Don't throw here as the document was created successfully
     }
 
     return { data, error: null };
@@ -353,14 +306,10 @@ export async function uploadDocument(
   }
 }
 
-/**
- * Delete a document from storage and database
- */
 export async function deleteDocument(
   docId: string
 ): Promise<{ success: boolean; error: Error | null }> {
   try {
-    // Get document info
     const { data: doc, error: fetchError } = await supabaseClient
       .from('document')
       .select('doc_path')
@@ -369,7 +318,6 @@ export async function deleteDocument(
 
     if (fetchError) throw fetchError;
 
-    // Delete from storage if it's a storage URL
     if (doc?.doc_path?.includes('storage')) {
       const pathMatch = doc.doc_path.match(/documents\/(.+)$/);
       if (pathMatch) {
@@ -383,7 +331,6 @@ export async function deleteDocument(
       }
     }
 
-    // Delete database record
     const { error } = await supabaseClient
       .from('document')
       .delete()
@@ -398,13 +345,9 @@ export async function deleteDocument(
   }
 }
 
-/**
- * Download or open a document
- */
 export function downloadDocument(docPath: string, fileName: string): void {
   try {
     if (docPath.includes('storage')) {
-      // For storage URLs, create download link
       const link = document.createElement('a');
       link.href = docPath;
       link.download = fileName;
@@ -413,7 +356,6 @@ export function downloadDocument(docPath: string, fileName: string): void {
       link.click();
       document.body.removeChild(link);
     } else {
-      // For external URLs, open in new tab
       window.open(docPath, '_blank');
     }
   } catch (error: any) {
@@ -421,13 +363,7 @@ export function downloadDocument(docPath: string, fileName: string): void {
   }
 }
 
-// ============================================
-// Utility Functions
-// ============================================
 
-/**
- * Determine document type from file extension
- */
 function getDocumentType(fileName: string): string {
   const ext = fileName.split('.').pop()?.toLowerCase();
   
@@ -456,9 +392,6 @@ function getDocumentType(fileName: string): string {
   return typeMap[ext || ''] || 'other';
 }
 
-/**
- * Format file size for display
- */
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
 
@@ -469,9 +402,6 @@ export function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-/**
- * Get time ago string from date
- */
 export function getTimeAgo(date: string | Date): string {
   const now = new Date();
   const past = new Date(date);
@@ -491,9 +421,6 @@ export function getTimeAgo(date: string | Date): string {
   return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
 }
 
-/**
- * Fetch enrolled users for a specific course
- */
 export async function getEnrolledUsers(
   classId: string
 ): Promise<{ data: any[]; error: Error | null }> {
@@ -523,7 +450,6 @@ export async function getEnrolledUsers(
       return { data: [], error: null };
     }
 
-    // Transform the data to include user profile information
     const enrolledUsers = data.map((enrollment: any) => {
       const profile = enrollment.profiles;
       const fullName = profile?.full_name || 'Anonymous User';
@@ -549,9 +475,6 @@ export async function getEnrolledUsers(
   }
 }
 
-/**
- * Validate CUNY email address
- */
 export function isValidCunyEmail(email: string): boolean {
   const cunyDomains = [
     'cuny.edu',
