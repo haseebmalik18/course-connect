@@ -13,6 +13,7 @@ interface UseCoursesReturn {
   deleteCourse: (classId: string) => Promise<boolean>;
   searchAllCourses: (query: string) => Promise<ClassWithStats[]>;
   joinCourse: (classId: string) => Promise<boolean>;
+  fetchCoursesByCollege: (collegeName: string) => Promise<ClassWithStats[]>;
 }
 
 export function useCourses(userId?: string): UseCoursesReturn {
@@ -36,7 +37,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
         .from('class')
         .select(`
           *,
-          document:document(count),
           user_courses!inner(user_id, role, joined_at)
         `)
         .eq('user_courses.user_id', userId)
@@ -44,14 +44,39 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (fetchError) throw fetchError;
 
-      // Transform data to include counts and user role
-      const coursesWithStats = (data || []).map((course: any) => ({
-        ...course,
-        document_count: course.document?.[0]?.count || 0,
-        member_count: Math.floor(Math.random() * 20) + 5,
-        user_role: course.user_courses[0]?.role || 'student',
-        joined_at: course.user_courses[0]?.joined_at,
-      }));
+      // For each course, get the document count separately
+      const coursesWithStats = await Promise.all(
+        (data || []).map(async (course: any) => {
+          try {
+            // Get document count for this course
+            const { count: docCount, error: countError } = await supabaseClient
+              .from('document')
+              .select('*', { count: 'exact', head: true })
+              .eq('class_id', course.class_id);
+
+            if (countError) {
+              console.warn(`Error getting document count for course ${course.class_id}:`, countError);
+            }
+
+            return {
+              ...course,
+              document_count: docCount || 0,
+              member_count: course.student_count || 0, // Use actual student_count from database
+              user_role: course.user_courses[0]?.role || 'student',
+              joined_at: course.user_courses[0]?.joined_at,
+            };
+          } catch (err) {
+            console.warn(`Error processing course ${course.class_id}:`, err);
+            return {
+              ...course,
+              document_count: 0,
+              member_count: course.student_count || 0,
+              user_role: course.user_courses[0]?.role || 'student',
+              joined_at: course.user_courses[0]?.joined_at,
+            };
+          }
+        })
+      );
 
       setCourses(coursesWithStats);
     } catch (err: any) {
@@ -80,6 +105,8 @@ export function useCourses(userId?: string): UseCoursesReturn {
           class_subject: courseData.class_subject || '',
           class_number: courseData.class_number || 0,
           created_by: user.id,
+          doc_count: 0,
+          student_count: 1,
         })
         .select()
         .single();
@@ -150,21 +177,42 @@ export function useCourses(userId?: string): UseCoursesReturn {
     try {
       const { data, error: searchError } = await supabaseClient
         .from('class')
-        .select(`
-          *,
-          document:document(count)
-        `)
+        .select('*')
         .or(`class_subject.ilike.%${query}%,class_number.eq.${isNaN(Number(query)) ? 0 : Number(query)},college_name.ilike.%${query}%`)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (searchError) throw searchError;
 
-      const coursesWithStats = (data || []).map((course: any) => ({
-        ...course,
-        document_count: course.document?.[0]?.count || 0,
-        member_count: Math.floor(Math.random() * 20) + 5,
-      }));
+      // For each course, get the document count separately
+      const coursesWithStats = await Promise.all(
+        (data || []).map(async (course: any) => {
+          try {
+            // Get document count for this course
+            const { count: docCount, error: countError } = await supabaseClient
+              .from('document')
+              .select('*', { count: 'exact', head: true })
+              .eq('class_id', course.class_id);
+
+            if (countError) {
+              console.warn(`Error getting document count for course ${course.class_id}:`, countError);
+            }
+
+            return {
+              ...course,
+              document_count: docCount || 0,
+              member_count: course.student_count || 0, // Use actual student_count from database
+            };
+          } catch (err) {
+            console.warn(`Error processing course ${course.class_id}:`, err);
+            return {
+              ...course,
+              document_count: 0,
+              member_count: course.student_count || 0,
+            };
+          }
+        })
+      );
 
       return coursesWithStats;
     } catch (err: any) {
@@ -217,6 +265,26 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (joinError) throw joinError;
 
+      // Increment the student_count in the class table
+      const { data: currentClass, error: countFetchError } = await supabaseClient
+        .from('class')
+        .select('student_count')
+        .eq('class_id', classId)
+        .single();
+
+      if (!countFetchError && currentClass) {
+        const currentCount = currentClass.student_count || 0;
+        const { error: updateError } = await supabaseClient
+          .from('class')
+          .update({ student_count: currentCount + 1 })
+          .eq('class_id', classId);
+
+        if (updateError) {
+          console.warn('Error updating student_count:', updateError);
+          // Don't fail the whole operation, just log the warning
+        }
+      }
+
       // Refetch courses to update the list
       await fetchCourses();
 
@@ -224,6 +292,86 @@ export function useCourses(userId?: string): UseCoursesReturn {
     } catch (err: any) {
       console.error('Error joining course:', err);
       return false;
+    }
+  };
+
+  const fetchCoursesByCollege = async (collegeName: string): Promise<ClassWithStats[]> => {
+    try {
+      // Fetch ALL courses by college name (not just enrolled ones)
+      const { data, error: fetchError } = await supabaseClient
+        .from('class')
+        .select('*')
+        .eq('college_name', collegeName)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw fetchError;
+
+      // For each course, get the document count separately
+      const coursesWithStats = await Promise.all(
+        (data || []).map(async (course: any) => {
+          try {
+            // Get document count for this course
+            const { count: docCount, error: countError } = await supabaseClient
+              .from('document')
+              .select('*', { count: 'exact', head: true })
+              .eq('class_id', course.class_id);
+
+            if (countError) {
+              console.warn(`Error getting document count for course ${course.class_id}:`, countError);
+            }
+
+            // Get member count for this course
+            const { count: memberCount, error: memberError } = await supabaseClient
+              .from('user_courses')
+              .select('*', { count: 'exact', head: true })
+              .eq('class_id', course.class_id);
+
+            if (memberError) {
+              console.warn(`Error getting member count for course ${course.class_id}:`, memberError);
+            }
+
+            // Check if current user is enrolled in this course
+            let userRole = null;
+            let joinedAt = null;
+            
+            if (userId) {
+              const { data: userEnrollment, error: enrollmentError } = await supabaseClient
+                .from('user_courses')
+                .select('role, joined_at')
+                .eq('class_id', course.class_id)
+                .eq('user_id', userId)
+                .single();
+
+              if (!enrollmentError && userEnrollment) {
+                userRole = userEnrollment.role;
+                joinedAt = userEnrollment.joined_at;
+              }
+            }
+
+            return {
+              ...course,
+              document_count: docCount || 0,
+              member_count: memberCount || 0,
+              user_role: userRole,
+              joined_at: joinedAt,
+            };
+          } catch (err) {
+            console.warn(`Error processing course ${course.class_id}:`, err);
+            return {
+              ...course,
+              document_count: 0,
+              member_count: 0,
+              user_role: null,
+              joined_at: null,
+            };
+          }
+        })
+      );
+
+      return coursesWithStats;
+    } catch (err: any) {
+      console.error('Error fetching courses by college:', err);
+      return [];
     }
   };
 
@@ -240,6 +388,7 @@ export function useCourses(userId?: string): UseCoursesReturn {
     deleteCourse,
     searchAllCourses,
     joinCourse,
+    fetchCoursesByCollege,
   };
 }
 
@@ -257,19 +406,26 @@ export function useCourse(classId: string) {
       try {
         const { data, error: fetchError } = await supabaseClient
           .from('class')
-          .select(`
-            *,
-            document:document(count)
-          `)
+          .select('*')
           .eq('class_id', classId)
           .single();
 
         if (fetchError) throw fetchError;
 
+        // Get document count for this course
+        const { count: docCount, error: countError } = await supabaseClient
+          .from('document')
+          .select('*', { count: 'exact', head: true })
+          .eq('class_id', classId);
+
+        if (countError) {
+          console.warn(`Error getting document count for course ${classId}:`, countError);
+        }
+
         const courseWithStats = {
           ...data,
-          document_count: data.document?.[0]?.count || 0,
-          member_count: Math.floor(Math.random() * 20) + 5,
+          document_count: docCount || 0,
+          member_count: data.student_count || 0, // Use actual student_count from database
         };
 
         setCourse(courseWithStats);

@@ -13,6 +13,7 @@ export interface Document {
   class_id: string;
   doc_path: string;
   doc_type: string;
+  doc_name: string;
   created_by: string;
   created_at: string;
 }

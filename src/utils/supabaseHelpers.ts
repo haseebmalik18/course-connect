@@ -16,12 +16,10 @@ export async function getCourses(options?: {
   offset?: number;
 }): Promise<{ data: ClassWithStats[]; error: Error | null }> {
   try {
+    // First, get all courses
     let query = supabaseClient
       .from('class')
-      .select(`
-        *,
-        document:document(count)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     // Apply filters
@@ -41,16 +39,49 @@ export async function getCourses(options?: {
       query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
     }
 
-    const { data, error } = await query;
+    const { data: courses, error } = await query;
 
     if (error) throw error;
 
-    // Transform data to include counts
-    const coursesWithStats = (data || []).map((course: any) => ({
-      ...course,
-      document_count: course.document?.[0]?.count || 0,
-      member_count: Math.floor(Math.random() * 20) + 5, // Placeholder
-    }));
+    // For each course, get the document count separately
+    const coursesWithStats = await Promise.all(
+      (courses || []).map(async (course) => {
+        try {
+          // Get document count for this course
+          const { count: docCount, error: countError } = await supabaseClient
+            .from('document')
+            .select('*', { count: 'exact', head: true })
+            .eq('class_id', course.class_id);
+
+          if (countError) {
+            console.warn(`Error getting document count for course ${course.class_id}:`, countError);
+          }
+
+          // Get member count for this course
+          const { count: memberCount, error: memberError } = await supabaseClient
+            .from('user_courses')
+            .select('*', { count: 'exact', head: true })
+            .eq('class_id', course.class_id);
+
+          if (memberError) {
+            console.warn(`Error getting member count for course ${course.class_id}:`, memberError);
+          }
+
+          return {
+            ...course,
+            document_count: docCount || 0,
+            member_count: memberCount || 0,
+          };
+        } catch (err) {
+          console.warn(`Error processing course ${course.class_id}:`, err);
+          return {
+            ...course,
+            document_count: 0,
+            member_count: 0,
+          };
+        }
+      })
+    );
 
     return { data: coursesWithStats, error: null };
   } catch (error: any) {
@@ -66,21 +97,38 @@ export async function getCourseById(
   classId: string
 ): Promise<{ data: ClassWithStats | null; error: Error | null }> {
   try {
-    const { data, error } = await supabaseClient
+    const { data: course, error } = await supabaseClient
       .from('class')
-      .select(`
-        *,
-        document:document(count)
-      `)
+      .select('*')
       .eq('class_id', classId)
       .single();
 
     if (error) throw error;
 
+    // Get document count for this course
+    const { count: docCount, error: countError } = await supabaseClient
+      .from('document')
+      .select('*', { count: 'exact', head: true })
+      .eq('class_id', classId);
+
+    if (countError) {
+      console.warn(`Error getting document count for course ${classId}:`, countError);
+    }
+
+    // Get member count for this course
+    const { count: memberCount, error: memberError } = await supabaseClient
+      .from('user_courses')
+      .select('*', { count: 'exact', head: true })
+      .eq('class_id', classId);
+
+    if (memberError) {
+      console.warn(`Error getting member count for course ${classId}:`, memberError);
+    }
+
     const courseWithStats = {
-      ...data,
-      document_count: data.document?.[0]?.count || 0,
-      member_count: Math.floor(Math.random() * 20) + 5,
+      ...course,
+      document_count: docCount || 0,
+      member_count: memberCount || 0,
     };
 
     return { data: courseWithStats, error: null };
@@ -193,7 +241,7 @@ export async function getDocumentsByClass(
   try {
     const { data, error } = await supabaseClient
       .from('document')
-      .select('*')
+      .select('doc_id, class_id, doc_path, doc_type, created_by, created_at')
       .eq('class_id', classId)
       .order('created_at', { ascending: false });
 
@@ -221,8 +269,8 @@ export async function getDocumentsByClass(
 export async function uploadDocument(
   file: File,
   classId: string,
+  docName: string,
   metadata?: {
-    title?: string;
     description?: string;
   }
 ): Promise<{ data: Document | null; error: Error | null }> {
@@ -263,12 +311,40 @@ export async function uploadDocument(
         class_id: classId,
         doc_path: publicUrl,
         doc_type: docType,
+        doc_name: docName,
         created_by: user.id,
       })
       .select()
       .single();
 
     if (error) throw error;
+
+    // Update the doc_count in the class table
+    try {
+      // First get the current class to check if doc_count exists
+      const { data: currentClass, error: fetchError } = await supabaseClient
+        .from('class')
+        .select('doc_count')
+        .eq('class_id', classId)
+        .single();
+
+      if (!fetchError && currentClass) {
+        const currentCount = currentClass.doc_count || 0;
+        const newCount = currentCount + 1;
+        
+        const { error: updateError } = await supabaseClient
+          .from('class')
+          .update({ doc_count: newCount })
+          .eq('class_id', classId);
+
+        if (updateError) {
+          console.warn('Error updating class doc_count:', updateError);
+        }
+      }
+    } catch (countError) {
+      console.warn('Error updating document count:', countError);
+      // Don't throw here as the document was created successfully
+    }
 
     return { data, error: null };
   } catch (error: any) {
