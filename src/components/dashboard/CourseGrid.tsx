@@ -1,9 +1,10 @@
 "use client";
 
 import CourseCard from "./CourseCard";
+import { ClassWithStats } from "@/lib/types/database";
 
 interface CourseGridProps {
-  courses: any[];
+  courses: ClassWithStats[];
   loading: boolean;
   error: string | null;
   onCourseClick: (courseId: string) => void;
