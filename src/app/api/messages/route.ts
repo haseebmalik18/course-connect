@@ -10,9 +10,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (!supabaseServerClient) {
-    console.error(
-      "Supabase server client not initialized - missing service role key"
-    );
+    console.error("Supabase server client not initialized");
+    console.error("Service role key exists:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+    console.error("Service role key length:", process.env.SUPABASE_SERVICE_ROLE_KEY?.length);
+    console.error("URL exists:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
     return new Response("Server configuration error", { status: 500 });
   }
 

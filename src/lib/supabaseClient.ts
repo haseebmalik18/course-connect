@@ -39,6 +39,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing Supabase environment variables");
 }
 
+if (!supabaseServiceRoleKey) {
+  console.warn("Missing SUPABASE_SERVICE_ROLE_KEY - server-side operations may fail");
+}
+
 // Client-side Supabase client (anonymous key)
 export const supabaseClient = createClient<Database>(
   supabaseUrl,
