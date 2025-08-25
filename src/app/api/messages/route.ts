@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
 
       const setupSubscription = async () => {
         try {
+          console.log("Fetching initial messages for classId:", classId);
           const { data: initialMessages, error: fetchError } = await supabase
             .from("messages")
             .select("*")
@@ -51,8 +52,15 @@ export async function GET(request: NextRequest) {
             .limit(100);
 
           if (fetchError) {
-            console.error("Error fetching initial messages:", fetchError);
-            sendMessage({ type: "error", error: "Failed to load messages" });
+            console.error("Error fetching initial messages:", {
+              error: fetchError,
+              code: fetchError.code,
+              message: fetchError.message,
+              details: fetchError.details,
+              hint: fetchError.hint,
+              classId
+            });
+            sendMessage({ type: "error", error: `Failed to load messages: ${fetchError.message}` });
             return;
           }
 
@@ -84,10 +92,17 @@ export async function GET(request: NextRequest) {
                 .order("created_at", { ascending: true });
 
               if (pollError) {
-                console.error("Error polling messages:", pollError);
+                console.error("Error polling messages:", {
+                  error: pollError,
+                  code: pollError.code,
+                  message: pollError.message,
+                  details: pollError.details,
+                  hint: pollError.hint,
+                  classId
+                });
                 sendMessage({
                   type: "error",
-                  error: "Failed to load messages",
+                  error: `Failed to load messages: ${pollError.message}`,
                 });
                 return;
               }
