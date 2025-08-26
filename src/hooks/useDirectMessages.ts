@@ -62,7 +62,8 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           sender_id: currentUserId,
           recipient_id: recipientId,
           content: content.trim(),
-          message_type: "text",
+          message_type: "text" as const,
+          is_read: false,
         })
         .select(`
           *,
