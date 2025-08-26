@@ -325,6 +325,30 @@ export function useCourses(userId?: string): UseCoursesReturn {
         }
       }
 
+      // Verify the record was actually created
+      const { data: verifyData, error: verifyError } = await (
+        supabaseClient.from("user_courses") as any
+      )
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("class_id", classId)
+        .maybeSingle();
+
+      console.log('Post-insert verification:', { verifyData, verifyError });
+
+      if (!verifyData) {
+        console.error('Record not found after insert - possible rollback!');
+      }
+
+      // Also check total count in this class
+      const { data: allRecords } = await (
+        supabaseClient.from("user_courses") as any
+      )
+        .select("*")
+        .eq("class_id", classId);
+
+      console.log('All records in this class after join:', allRecords);
+
       await fetchCourses();
 
       return true;
