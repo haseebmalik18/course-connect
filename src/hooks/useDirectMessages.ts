@@ -23,7 +23,7 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await (supabase as any)
         .from("direct_messages")
         .select(`
           *,
@@ -56,7 +56,7 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
     if (!currentUserId || !recipientId || !content.trim()) return false;
 
     try {
-      const { data, error: insertError } = await supabase
+      const { data, error: insertError } = await (supabase as any)
         .from("direct_messages")
         .insert({
           sender_id: currentUserId,
@@ -80,7 +80,7 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
         recipient: data.recipient,
       };
 
-      setMessages(prev => [...prev, messageWithUser]);
+      setMessages((prev: DirectMessageWithUser[]) => [...prev, messageWithUser]);
       return true;
     } catch (err: any) {
       setError(err.message || "Failed to send message");
@@ -91,7 +91,7 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
   // Delete a message
   const deleteMessage = useCallback(async (messageId: string): Promise<boolean> => {
     try {
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await (supabase as any)
         .from("direct_messages")
         .delete()
         .eq("message_id", messageId)
@@ -99,7 +99,7 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
 
       if (deleteError) throw deleteError;
 
-      setMessages(prev => prev.filter(msg => msg.message_id !== messageId));
+      setMessages((prev: DirectMessageWithUser[]) => prev.filter((msg: DirectMessageWithUser) => msg.message_id !== messageId));
       return true;
     } catch (err: any) {
       setError(err.message || "Failed to delete message");
@@ -112,7 +112,7 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
     if (!currentUserId || !recipientId) return;
 
     try {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from("direct_messages")
         .update({ is_read: true })
         .eq("sender_id", recipientId)
@@ -122,7 +122,7 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
       if (updateError) throw updateError;
 
       // Update local state
-      setMessages(prev => prev.map(msg => 
+      setMessages((prev: DirectMessageWithUser[]) => prev.map((msg: DirectMessageWithUser) => 
         msg.sender_id === recipientId && msg.recipient_id === currentUserId && !msg.is_read
           ? { ...msg, is_read: true }
           : msg
@@ -148,9 +148,9 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           table: "direct_messages",
           filter: `or(and(sender_id.eq.${currentUserId},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${currentUserId}))`,
         },
-        async (payload) => {
+        async (payload: any) => {
           // Fetch the full message with user data
-          const { data, error } = await supabase
+          const { data, error } = await (supabase as any)
             .from("direct_messages")
             .select(`
               *,
@@ -167,9 +167,9 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
               recipient: data.recipient,
             };
 
-            setMessages(prev => {
+            setMessages((prev: DirectMessageWithUser[]) => {
               // Avoid duplicates
-              if (prev.some(msg => msg.message_id === messageWithUser.message_id)) {
+              if (prev.some((msg: DirectMessageWithUser) => msg.message_id === messageWithUser.message_id)) {
                 return prev;
               }
               return [...prev, messageWithUser];
@@ -184,8 +184,8 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           schema: "public",
           table: "direct_messages",
         },
-        (payload) => {
-          setMessages(prev => prev.filter(msg => msg.message_id !== payload.old.message_id));
+        (payload: any) => {
+          setMessages((prev: DirectMessageWithUser[]) => prev.filter((msg: DirectMessageWithUser) => msg.message_id !== payload.old.message_id));
         }
       )
       .on(
@@ -195,8 +195,8 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           schema: "public",
           table: "direct_messages",
         },
-        (payload) => {
-          setMessages(prev => prev.map(msg => 
+        (payload: any) => {
+          setMessages((prev: DirectMessageWithUser[]) => prev.map((msg: DirectMessageWithUser) => 
             msg.message_id === payload.new.message_id 
               ? { ...msg, ...payload.new }
               : msg
