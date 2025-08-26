@@ -425,73 +425,52 @@ export async function getEnrolledUsers(
   classId: string
 ): Promise<{ data: any[]; error: Error | null }> {
   try {
-    // Debug: Check the actual class record and its student_count
-    const { data: classInfo } = await (supabaseClient
-      .from('class') as any)
-      .select('student_count, created_by')
-      .eq('class_id', classId)
-      .single();
-    
-    console.log('Class info (student_count, created_by):', classInfo);
-
     // Get all user_courses entries for this class
     const { data: userCourses, error: userCoursesError } = await (supabaseClient
       .from('user_courses') as any)
       .select('*')
-      .eq('class_id', classId);
+      .eq('class_id', classId)
+      .order('joined_at', { ascending: true });
 
-    if (userCoursesError) {
-      console.error('Error fetching user_courses:', userCoursesError);
-      throw userCoursesError;
-    }
-
-    console.log('Raw user_courses data (count:', userCourses?.length, '):', userCourses);
+    if (userCoursesError) throw userCoursesError;
 
     if (!userCourses || userCourses.length === 0) {
-      console.log('No user_courses found for class:', classId);
       return { data: [], error: null };
     }
 
-    // Also check if there are any profiles that match these user IDs
+    // Fetch profiles for all users at once using IN clause
     const userIds = userCourses.map((uc: any) => uc.user_id);
-    const { data: allProfiles } = await (supabaseClient
+    const { data: profiles } = await (supabaseClient
       .from('profiles') as any)
       .select('*')
       .in('id', userIds);
-    
-    console.log('All profiles for these users:', allProfiles);
 
-    // Now fetch profiles for each user separately
-    const enrolledUsers = await Promise.all(
-      userCourses.map(async (enrollment: any) => {
-        const { data: profile } = await (supabaseClient
-          .from('profiles') as any)
-          .select('*')
-          .eq('id', enrollment.user_id)
-          .single();
-        
-        console.log(`Profile for user ${enrollment.user_id}:`, profile);
-        
-        const fullName = profile?.full_name || `User ${enrollment.user_id.slice(0, 8)}`;
-        
-        return {
-          id: enrollment.user_id,
-          name: fullName,
-          email: profile?.email || 'unknown@cuny.edu',
-          major: profile?.major || 'Unknown',
-          year: profile?.year || 'Unknown',
-          college: profile?.college || 'CUNY',
-          role: enrollment.role,
-          joined_at: enrollment.joined_at,
-          avatar: fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-        };
-      })
-    );
+    // Create a map for quick profile lookups
+    const profileMap = new Map();
+    profiles?.forEach((profile: any) => {
+      profileMap.set(profile.id, profile);
+    });
 
-    console.log('Final enrolled users (count:', enrolledUsers.length, '):', enrolledUsers);
+    // Map all user_courses to enrolled users, ensuring no one gets filtered out
+    const enrolledUsers = userCourses.map((enrollment: any) => {
+      const profile = profileMap.get(enrollment.user_id);
+      const fullName = profile?.full_name || `User ${enrollment.user_id.slice(0, 8)}`;
+      
+      return {
+        id: enrollment.user_id,
+        name: fullName,
+        email: profile?.email || 'unknown@cuny.edu',
+        major: profile?.major || 'Unknown',
+        year: profile?.year || 'Unknown',
+        college: profile?.college || 'CUNY',
+        role: enrollment.role,
+        joined_at: enrollment.joined_at,
+        avatar: fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+      };
+    });
+
     return { data: enrolledUsers, error: null };
   } catch (error: any) {
-    console.error('Error fetching enrolled users:', error);
     return { data: [], error };
   }
 }
