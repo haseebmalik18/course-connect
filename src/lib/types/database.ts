@@ -68,3 +68,33 @@ export interface DocumentWithUser extends Document {
     email?: string;
   };
 }
+
+export interface DirectMessage {
+  message_id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string;
+  message_type: 'text' | 'image' | 'file';
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DirectMessageWithUser extends DirectMessage {
+  sender?: {
+    full_name?: string;
+    email?: string;
+  };
+  recipient?: {
+    full_name?: string;
+    email?: string;
+  };
+}
+
+export interface Conversation {
+  user1_id: string;
+  user2_id: string;
+  last_message_at: string;
+  message_count: number;
+  unread_count: number;
+}

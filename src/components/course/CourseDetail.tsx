@@ -10,6 +10,7 @@ import { getEnrolledUsers, deleteDocument } from "@/utils/supabaseHelpers";
 import DocumentUpload from "./DocumentUpload";
 import DocumentSection from "./DocumentSection";
 import ChatMessage from "../chat/ChatMessage";
+import DirectMessageModal from "../chat/DirectMessageModal";
 
 interface Person {
   id: string;
@@ -34,6 +35,8 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
   const [enrolledUsers, setEnrolledUsers] = useState<Person[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [showDirectMessageModal, setShowDirectMessageModal] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState<Person | null>(null);
   const router = useRouter();
   const { user } = useAuth();
   const { course, loading: courseLoading, error: courseError } = useCourse(classId);
@@ -96,6 +99,8 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
   };
 
   const handleMessage = (person: Person) => {
+    setSelectedRecipient(person);
+    setShowDirectMessageModal(true);
   };
 
   const handleSendMessage = async () => {
@@ -468,6 +473,18 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
         onUpload={handleUploadSubmit}
         loading={documentsLoading}
       />
+
+      {selectedRecipient && (
+        <DirectMessageModal
+          isOpen={showDirectMessageModal}
+          onClose={() => {
+            setShowDirectMessageModal(false);
+            setSelectedRecipient(null);
+          }}
+          recipient={selectedRecipient}
+          currentUserId={user?.id || ""}
+        />
+      )}
     </div>
   );
 }
