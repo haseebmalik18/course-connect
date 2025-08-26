@@ -156,7 +156,7 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
     fetchMessages();
 
     const channel = supabase
-      .channel(`direct_messages:${Math.min(currentUserId, recipientId)}:${Math.max(currentUserId, recipientId)}`)
+      .channel(`direct_messages:${currentUserId < recipientId ? currentUserId : recipientId}:${currentUserId < recipientId ? recipientId : currentUserId}`)
       .on(
         "postgres_changes",
         {
