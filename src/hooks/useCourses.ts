@@ -257,9 +257,12 @@ export function useCourses(userId?: string): UseCoursesReturn {
           .select("*")
           .eq("user_id", user.id)
           .eq("class_id", classId)
-          .single();
+          .maybeSingle();
 
-      if (checkError && checkError.code !== "PGRST116") {
+      console.log('Existing membership check:', { existingMembership, checkError });
+
+      if (checkError) {
+        console.error('Error checking existing membership:', checkError);
         throw checkError;
       }
 
