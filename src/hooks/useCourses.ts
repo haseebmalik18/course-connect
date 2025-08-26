@@ -283,6 +283,15 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (fetchError) throw fetchError;
 
+      // Check how many records exist BEFORE joining
+      const { data: recordsBefore } = await (
+        supabaseClient.from("user_courses") as any
+      )
+        .select("*")
+        .eq("class_id", classId);
+
+      console.log('Records BEFORE join attempt:', recordsBefore);
+
       const { data: insertData, error: joinError } = await (
         supabaseClient.from("user_courses") as any
       ).insert({
@@ -345,7 +354,7 @@ export function useCourses(userId?: string): UseCoursesReturn {
         console.error('Record not found after insert - possible rollback!');
       }
 
-      // Also check total count in this class
+      // Also check total count in this class AFTER join
       const { data: allRecords } = await (
         supabaseClient.from("user_courses") as any
       )
@@ -353,6 +362,13 @@ export function useCourses(userId?: string): UseCoursesReturn {
         .eq("class_id", classId);
 
       console.log('All records in this class after join:', allRecords);
+
+      if (recordsBefore && allRecords && recordsBefore.length >= allRecords.length) {
+        console.error('WARNING: Record count did not increase or decreased!', {
+          before: recordsBefore.length,
+          after: allRecords.length
+        });
+      }
 
       await fetchCourses();
 
