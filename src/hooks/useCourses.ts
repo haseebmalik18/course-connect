@@ -113,21 +113,15 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (createError) throw createError;
 
-      const { data: ownerData, error: joinError } = await (
+      const { error: joinError } = await (
         supabaseClient.from("user_courses") as any
       ).insert({
         user_id: user.id,
         class_id: data.class_id,
         role: "owner",
-      })
-      .select();
+      });
 
-      console.log('Adding course creator to user_courses:', { ownerData, joinError });
-
-      if (joinError) {
-        console.error('Failed to add course creator to user_courses:', joinError);
-        throw joinError;
-      }
+      if (joinError) throw joinError;
 
       await fetchCourses();
 
@@ -264,12 +258,7 @@ export function useCourses(userId?: string): UseCoursesReturn {
           .eq("class_id", classId)
           .maybeSingle();
 
-      console.log('Existing membership check:', { existingMembership, checkError });
-
-      if (checkError) {
-        console.error('Error checking existing membership:', checkError);
-        throw checkError;
-      }
+      if (checkError) throw checkError;
 
       if (existingMembership) {
         return true;
@@ -283,15 +272,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (fetchError) throw fetchError;
 
-      // Check how many records exist BEFORE joining
-      const { data: recordsBefore } = await (
-        supabaseClient.from("user_courses") as any
-      )
-        .select("*")
-        .eq("class_id", classId);
-
-      console.log('Records BEFORE join attempt:', recordsBefore);
-
       const { data: insertData, error: joinError } = await (
         supabaseClient.from("user_courses") as any
       ).insert({
@@ -301,15 +281,8 @@ export function useCourses(userId?: string): UseCoursesReturn {
       })
       .select();
 
-      console.log('Join course insert result:', { insertData, joinError });
-
-      if (joinError) {
-        console.error('Failed to insert into user_courses:', joinError);
-        throw joinError;
-      }
-
+      if (joinError) throw joinError;
       if (!insertData || insertData.length === 0) {
-        console.error('Insert succeeded but no data returned');
         throw new Error('Failed to create enrollment record');
       }
 
@@ -322,53 +295,13 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (!countFetchError && currentClass) {
         const currentCount = currentClass.student_count || 0;
-        const newCount = currentCount + 1;
-        
-        console.log(`Updating student_count: ${currentCount} -> ${newCount}`);
-        
-        const { error: updateError } = await (
+        await (
           supabaseClient.from("class") as any
         )
-          .update({ student_count: newCount })
+          .update({ student_count: currentCount + 1 })
           .eq("class_id", classId);
-
-        if (updateError) {
-          console.error('Error updating student_count:', updateError);
-        } else {
-          console.log('Successfully updated student_count to:', newCount);
-        }
       }
 
-      // Verify the record was actually created
-      const { data: verifyData, error: verifyError } = await (
-        supabaseClient.from("user_courses") as any
-      )
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("class_id", classId)
-        .maybeSingle();
-
-      console.log('Post-insert verification:', { verifyData, verifyError });
-
-      if (!verifyData) {
-        console.error('Record not found after insert - possible rollback!');
-      }
-
-      // Also check total count in this class AFTER join
-      const { data: allRecords } = await (
-        supabaseClient.from("user_courses") as any
-      )
-        .select("*")
-        .eq("class_id", classId);
-
-      console.log('All records in this class after join:', allRecords);
-
-      if (recordsBefore && allRecords && recordsBefore.length >= allRecords.length) {
-        console.error('WARNING: Record count did not increase or decreased!', {
-          before: recordsBefore.length,
-          after: allRecords.length
-        });
-      }
 
       await fetchCourses();
 

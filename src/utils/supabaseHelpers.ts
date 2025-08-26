@@ -425,49 +425,32 @@ export async function getEnrolledUsers(
   classId: string
 ): Promise<{ data: any[]; error: Error | null }> {
   try {
-    console.log('getEnrolledUsers called for class:', classId);
-    
-    // Get all user_courses entries for this class
     const { data: userCourses, error: userCoursesError } = await (supabaseClient
       .from('user_courses') as any)
       .select('*')
       .eq('class_id', classId)
       .order('joined_at', { ascending: true });
 
-    console.log('userCourses query result:', { userCourses, userCoursesError });
-
     if (userCoursesError) throw userCoursesError;
 
     if (!userCourses || userCourses.length === 0) {
-      console.log('No user_courses found, returning empty array');
       return { data: [], error: null };
     }
 
-    // Fetch profiles for all users at once using IN clause
     const userIds = userCourses.map((uc: any) => uc.user_id);
-    console.log('User IDs to fetch profiles for:', userIds);
-    
-    const { data: profiles, error: profilesError } = await (supabaseClient
+    const { data: profiles } = await (supabaseClient
       .from('profiles') as any)
       .select('*')
       .in('id', userIds);
 
-    console.log('Profiles query result:', { profiles, profilesError });
-
-    // Create a map for quick profile lookups
     const profileMap = new Map();
     profiles?.forEach((profile: any) => {
       profileMap.set(profile.id, profile);
     });
 
-    console.log('Profile map created:', Array.from(profileMap.keys()));
-
-    // Map all user_courses to enrolled users, ensuring no one gets filtered out
     const enrolledUsers = userCourses.map((enrollment: any) => {
       const profile = profileMap.get(enrollment.user_id);
       const fullName = profile?.full_name || `User ${enrollment.user_id.slice(0, 8)}`;
-      
-      console.log(`Mapping user ${enrollment.user_id}:`, { enrollment, profile });
       
       return {
         id: enrollment.user_id,
@@ -482,10 +465,8 @@ export async function getEnrolledUsers(
       };
     });
 
-    console.log('Final enrolled users:', enrolledUsers);
     return { data: enrolledUsers, error: null };
   } catch (error: any) {
-    console.error('Error in getEnrolledUsers:', error);
     return { data: [], error };
   }
 }
