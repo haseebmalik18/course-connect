@@ -275,15 +275,26 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (fetchError) throw fetchError;
 
-      const { error: joinError } = await (
+      const { data: insertData, error: joinError } = await (
         supabaseClient.from("user_courses") as any
       ).insert({
         user_id: user.id,
         class_id: classId,
         role: "student",
-      });
+      })
+      .select();
 
-      if (joinError) throw joinError;
+      console.log('Join course insert result:', { insertData, joinError });
+
+      if (joinError) {
+        console.error('Failed to insert into user_courses:', joinError);
+        throw joinError;
+      }
+
+      if (!insertData || insertData.length === 0) {
+        console.error('Insert succeeded but no data returned');
+        throw new Error('Failed to create enrollment record');
+      }
 
       const { data: currentClass, error: countFetchError } = await (
         supabaseClient.from("class") as any
@@ -294,13 +305,20 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (!countFetchError && currentClass) {
         const currentCount = currentClass.student_count || 0;
+        const newCount = currentCount + 1;
+        
+        console.log(`Updating student_count: ${currentCount} -> ${newCount}`);
+        
         const { error: updateError } = await (
           supabaseClient.from("class") as any
         )
-          .update({ student_count: currentCount + 1 })
+          .update({ student_count: newCount })
           .eq("class_id", classId);
 
         if (updateError) {
+          console.error('Error updating student_count:', updateError);
+        } else {
+          console.log('Successfully updated student_count to:', newCount);
         }
       }
 
