@@ -113,15 +113,20 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       if (createError) throw createError;
 
-      const { error: joinError } = await (
+      const { data: ownerData, error: joinError } = await (
         supabaseClient.from("user_courses") as any
       ).insert({
         user_id: user.id,
         class_id: data.class_id,
         role: "owner",
-      });
+      })
+      .select();
+
+      console.log('Adding course creator to user_courses:', { ownerData, joinError });
 
       if (joinError) {
+        console.error('Failed to add course creator to user_courses:', joinError);
+        throw joinError;
       }
 
       await fetchCourses();
