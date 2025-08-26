@@ -15,7 +15,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
 
-  // Fetch messages between two users
   const fetchMessages = useCallback(async () => {
     if (!currentUserId || !recipientId) return;
 
@@ -31,7 +30,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
 
       if (fetchError) throw fetchError;
 
-      // Fetch user details separately
       const userIds = [...new Set([...data.map((m: any) => m.sender_id), ...data.map((m: any) => m.recipient_id)])];
       const { data: profiles } = await (supabase as any)
         .from("profiles")
@@ -59,7 +57,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
     }
   }, [currentUserId, recipientId]);
 
-  // Send a message
   const sendMessage = useCallback(async (content: string): Promise<boolean> => {
     if (!currentUserId || !recipientId || !content.trim()) return false;
 
@@ -78,7 +75,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
 
       if (insertError) throw insertError;
 
-      // Fetch user details for the new message
       const { data: senderProfile } = await (supabase as any)
         .from("profiles")
         .select("id, full_name, email")
@@ -105,14 +101,13 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
     }
   }, [currentUserId, recipientId]);
 
-  // Delete a message
   const deleteMessage = useCallback(async (messageId: string): Promise<boolean> => {
     try {
       const { error: deleteError } = await (supabase as any)
         .from("direct_messages")
         .delete()
         .eq("message_id", messageId)
-        .eq("sender_id", currentUserId); // Only allow deleting own messages
+        .eq("sender_id", currentUserId);
 
       if (deleteError) throw deleteError;
 
@@ -124,7 +119,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
     }
   }, [currentUserId]);
 
-  // Mark messages as read
   const markAsRead = useCallback(async (): Promise<void> => {
     if (!currentUserId || !recipientId) return;
 
@@ -138,18 +132,16 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
 
       if (updateError) throw updateError;
 
-      // Update local state
       setMessages((prev: DirectMessageWithUser[]) => prev.map((msg: DirectMessageWithUser) => 
         msg.sender_id === recipientId && msg.recipient_id === currentUserId && !msg.is_read
           ? { ...msg, is_read: true }
           : msg
       ));
     } catch (err: any) {
-      console.error("Failed to mark messages as read:", err);
+      setError(err.message || "Failed to mark messages as read");
     }
   }, [currentUserId, recipientId]);
 
-  // Set up realtime subscription
   useEffect(() => {
     if (!currentUserId || !recipientId) return;
 
@@ -165,7 +157,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           table: "direct_messages",
         },
         async (payload: any) => {
-          // Only process messages for this conversation
           const newMessage = payload.new;
           const isRelevantMessage = 
             (newMessage.sender_id === currentUserId && newMessage.recipient_id === recipientId) ||
@@ -173,7 +164,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           
           if (!isRelevantMessage) return;
 
-          // Fetch user profiles separately
           const { data: senderProfile } = await (supabase as any)
             .from("profiles")
             .select("id, full_name, email")
@@ -193,7 +183,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           };
 
           setMessages((prev: DirectMessageWithUser[]) => {
-            // Avoid duplicates
             if (prev.some((msg: DirectMessageWithUser) => msg.message_id === messageWithUser.message_id)) {
               return prev;
             }
@@ -248,7 +237,6 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
     };
   }, [currentUserId, recipientId, fetchMessages]);
 
-  // Mark messages as read when component mounts or messages change
   useEffect(() => {
     if (messages.length > 0) {
       markAsRead();
