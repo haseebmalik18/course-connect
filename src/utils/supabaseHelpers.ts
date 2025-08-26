@@ -443,53 +443,34 @@ export async function getEnrolledUsers(
       return { data: [], error: null };
     }
 
-    // Now try the join query
-    const { data, error } = await (supabaseClient
+    // Get all user_courses entries first, then fetch profiles separately to ensure we get all users
+    const { data: allEnrollments, error } = await (supabaseClient
       .from('user_courses') as any)
-      .select(`
-        user_id,
-        role,
-        joined_at,
-        profiles (
-          full_name,
-          email,
-          major,
-          year,
-          college
-        )
-      `)
+      .select('user_id, role, joined_at')
       .eq('class_id', classId)
       .order('joined_at', { ascending: true });
 
     if (error) {
-      console.error('Error with join query:', error);
+      console.error('Error fetching user enrollments:', error);
       throw error;
     }
 
-    console.log('Join query result:', data);
+    console.log('All enrollment data:', allEnrollments);
 
-    if (!data || data.length === 0) {
+    if (!allEnrollments || allEnrollments.length === 0) {
       return { data: [], error: null };
     }
 
-    // Process the data and handle missing profiles
+    // Now fetch profiles for each user separately to ensure we don't lose any users
     const enrolledUsers = await Promise.all(
-      data.map(async (enrollment: any) => {
-        let profile = enrollment.profiles;
+      allEnrollments.map(async (enrollment: any) => {
+        const { data: profile } = await (supabaseClient
+          .from('profiles') as any)
+          .select('*')
+          .eq('id', enrollment.user_id)
+          .single();
         
-        console.log(`Processing enrollment for user ${enrollment.user_id}:`, { enrollment, profile });
-        
-        // If profile is null, try to fetch it separately
-        if (!profile) {
-          console.log(`No profile found in join for user ${enrollment.user_id}, trying separate query...`);
-          const { data: fallbackProfile } = await (supabaseClient
-            .from('profiles') as any)
-            .select('*')
-            .eq('id', enrollment.user_id)
-            .single();
-          profile = fallbackProfile;
-          console.log(`Fallback profile result:`, fallbackProfile);
-        }
+        console.log(`Profile for user ${enrollment.user_id}:`, profile);
         
         const fullName = profile?.full_name || `User ${enrollment.user_id.slice(0, 8)}`;
         
