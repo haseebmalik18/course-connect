@@ -25,20 +25,28 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
 
       const { data, error: fetchError } = await (supabase as any)
         .from("direct_messages")
-        .select(`
-          *,
-          sender:profiles!sender_id(full_name, email),
-          recipient:profiles!recipient_id(full_name, email)
-        `)
+        .select("*")
         .or(`and(sender_id.eq.${currentUserId},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${currentUserId})`)
         .order("created_at", { ascending: true });
 
       if (fetchError) throw fetchError;
 
+      // Fetch user details separately
+      const userIds = [...new Set([...data.map((m: any) => m.sender_id), ...data.map((m: any) => m.recipient_id)])];
+      const { data: profiles } = await (supabase as any)
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds);
+
+      const profileMap = (profiles || []).reduce((acc: any, profile: any) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {});
+
       const messagesWithUsers = (data || []).map((message: any) => ({
         ...message,
-        sender: message.sender,
-        recipient: message.recipient,
+        sender: profileMap[message.sender_id],
+        recipient: profileMap[message.recipient_id],
       }));
 
       setMessages(messagesWithUsers);
@@ -65,19 +73,28 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           message_type: "text" as const,
           is_read: false,
         })
-        .select(`
-          *,
-          sender:profiles!sender_id(full_name, email),
-          recipient:profiles!recipient_id(full_name, email)
-        `)
+        .select("*")
         .single();
 
       if (insertError) throw insertError;
 
+      // Fetch user details for the new message
+      const { data: senderProfile } = await (supabase as any)
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("id", data.sender_id)
+        .single();
+      
+      const { data: recipientProfile } = await (supabase as any)
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("id", data.recipient_id)
+        .single();
+
       const messageWithUser = {
         ...data,
-        sender: data.sender,
-        recipient: data.recipient,
+        sender: senderProfile,
+        recipient: recipientProfile,
       };
 
       setMessages((prev: DirectMessageWithUser[]) => [...prev, messageWithUser]);
@@ -152,19 +169,28 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           // Fetch the full message with user data
           const { data, error } = await (supabase as any)
             .from("direct_messages")
-            .select(`
-              *,
-              sender:profiles!sender_id(full_name, email),
-              recipient:profiles!recipient_id(full_name, email)
-            `)
+            .select("*")
             .eq("message_id", payload.new.message_id)
             .single();
 
           if (!error && data) {
+            // Fetch user profiles separately
+            const { data: senderProfile } = await (supabase as any)
+              .from("profiles")
+              .select("id, full_name, email")
+              .eq("id", data.sender_id)
+              .single();
+            
+            const { data: recipientProfile } = await (supabase as any)
+              .from("profiles")
+              .select("id, full_name, email")
+              .eq("id", data.recipient_id)
+              .single();
+
             const messageWithUser = {
               ...data,
-              sender: data.sender,
-              recipient: data.recipient,
+              sender: senderProfile,
+              recipient: recipientProfile,
             };
 
             setMessages((prev: DirectMessageWithUser[]) => {
