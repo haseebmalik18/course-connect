@@ -62,7 +62,6 @@ export default function Sidebar({ isMobileMenuOpen, activeNav, onNavChange, onCo
   };
 
   const handleSpecificCollegeClick = (collegeName: string) => {
-    console.log(`Clicked on ${collegeName}`);
     onCollegeSelect(collegeName);
     setIsCollegesOpen(false);
   };

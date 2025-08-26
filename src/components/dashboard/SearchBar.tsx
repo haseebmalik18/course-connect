@@ -47,7 +47,6 @@ export default function SearchBar({ searchAllCourses, joinCourse, userCourses }:
         setResults(searchResults);
         setIsOpen(searchResults.length > 0);
       } catch (error) {
-        console.error('Search error:', error);
         setResults([]);
         setIsOpen(false);
       } finally {
@@ -72,7 +71,6 @@ export default function SearchBar({ searchAllCourses, joinCourse, userCourses }:
         setIsOpen(false);
       }
     } catch (error) {
-      console.error('Join course error:', error);
     } finally {
       setJoiningCourseId(null);
     }

@@ -36,7 +36,6 @@ export function useAuth(): AuthState & AuthActions {
         setSession(session);
         setUser(session?.user ?? null);
       } catch (err) {
-        console.error("Error initializing auth:", err);
         setError("Failed to initialize authentication");
       } finally {
         setLoading(false);
@@ -59,10 +58,8 @@ export function useAuth(): AuthState & AuthActions {
           router.push("/");
           break;
         case "TOKEN_REFRESHED":
-          console.log("Token refreshed successfully");
           break;
         case "USER_UPDATED":
-          console.log("User profile updated");
           break;
       }
     });

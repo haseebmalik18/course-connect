@@ -56,7 +56,6 @@ export default function Dashboard() {
     try {
       await signOut();
     } catch (error) {
-      console.error("Sign out error:", error);
     }
   };
 
@@ -76,7 +75,6 @@ export default function Dashboard() {
       const collegeCourses = await fetchCoursesByCollege(collegeName);
       setFilteredCourses(collegeCourses);
     } catch (error) {
-      console.error('Error fetching courses by college:', error);
       setFilteredCourses([]);
     }
   };

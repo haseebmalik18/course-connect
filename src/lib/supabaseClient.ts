@@ -40,7 +40,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 if (!supabaseServiceRoleKey) {
-  console.warn("Missing SUPABASE_SERVICE_ROLE_KEY - server-side operations may fail");
 }
 
 // Client-side Supabase client (anonymous key)

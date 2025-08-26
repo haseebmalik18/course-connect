@@ -49,7 +49,6 @@ export function useMessages(classId?: string): UseMessagesReturn {
 
       setMessages(messagesWithUsers);
     } catch (err: any) {
-      console.error("Error fetching messages:", err);
       setError(err.message || "Failed to fetch messages");
     } finally {
       setLoading(false);
@@ -100,7 +99,6 @@ export function useMessages(classId?: string): UseMessagesReturn {
 
       return true;
     } catch (err: any) {
-      console.error("Error sending message:", err);
       setError(err.message || "Failed to send message");
       return false;
     }
@@ -122,7 +120,6 @@ export function useMessages(classId?: string): UseMessagesReturn {
 
       return true;
     } catch (err: any) {
-      console.error("Error deleting message:", err);
       setError(err.message || "Failed to delete message");
       return false;
     }

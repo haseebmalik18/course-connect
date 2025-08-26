@@ -10,10 +10,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (!supabaseServerClient) {
-    console.error("Supabase server client not initialized");
-    console.error("Service role key exists:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-    console.error("Service role key length:", process.env.SUPABASE_SERVICE_ROLE_KEY?.length);
-    console.error("URL exists:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
     return new Response("Server configuration error", { status: 500 });
   }
 
@@ -44,7 +40,6 @@ export async function GET(request: NextRequest) {
 
       const setupSubscription = async () => {
         try {
-          console.log("Fetching initial messages for classId:", classId);
           const { data: initialMessages, error: fetchError } = await supabase
             .from("messages")
             .select("*")
@@ -53,14 +48,6 @@ export async function GET(request: NextRequest) {
             .limit(100);
 
           if (fetchError) {
-            console.error("Error fetching initial messages:", {
-              error: fetchError,
-              code: fetchError.code,
-              message: fetchError.message,
-              details: fetchError.details,
-              hint: fetchError.hint,
-              classId
-            });
             sendMessage({ type: "error", error: `Failed to load messages: ${fetchError.message}` });
             return;
           }
@@ -93,14 +80,6 @@ export async function GET(request: NextRequest) {
                 .order("created_at", { ascending: true });
 
               if (pollError) {
-                console.error("Error polling messages:", {
-                  error: pollError,
-                  code: pollError.code,
-                  message: pollError.message,
-                  details: pollError.details,
-                  hint: pollError.hint,
-                  classId
-                });
                 sendMessage({
                   type: "error",
                   error: `Failed to load messages: ${pollError.message}`,
@@ -123,7 +102,7 @@ export async function GET(request: NextRequest) {
                 lastMessageTime = lastMessage.created_at;
               }
             } catch (error) {
-              console.error("Error polling messages:", error);
+              
               sendMessage({ type: "error", error: "Failed to load messages" });
             }
           };
@@ -135,7 +114,7 @@ export async function GET(request: NextRequest) {
             clearInterval(pollInterval);
           };
         } catch (error) {
-          console.error("Setup error:", error);
+          
           sendMessage({ type: "error", error: "Failed to load messages" });
         }
       };
@@ -154,12 +133,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  console.log("=== POST /api/messages called ===");
   try {
     if (!supabaseServerClient) {
-      console.error(
-        "Supabase server client not initialized - missing service role key"
-      );
       return Response.json(
         { error: "Server configuration error" },
         { status: 500 }
@@ -171,20 +146,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { classId, content, userId } = body;
-    console.log("Request body:", { classId, content, userId });
-
-    console.log("POST /api/messages received:", {
-      classId,
-      content,
-      userId: userId?.slice(0, 8),
-    });
 
     if (!classId || !content || !userId) {
-      console.log("Missing required fields:", {
-        classId: !!classId,
-        content: !!content,
-        userId: !!userId,
-      });
       return Response.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -204,7 +167,6 @@ export async function POST(request: NextRequest) {
         await supabase.auth.admin.getUserById(userId);
 
       if (authError) {
-        console.error("Error fetching auth user:", authError);
         return Response.json(
           { error: "User not found in auth system" },
           { status: 404 }
@@ -220,15 +182,12 @@ export async function POST(request: NextRequest) {
       });
 
       if (createProfileError) {
-        console.error("Error creating profile:", createProfileError);
         return Response.json(
           { error: "Failed to create user profile" },
           { status: 500 }
         );
       }
-      console.log("Created profile for user:", userId);
     } else if (profileError) {
-      console.error("Error checking profile:", profileError);
       return Response.json(
         { error: "Database error checking user profile" },
         { status: 500 }
@@ -246,16 +205,8 @@ export async function POST(request: NextRequest) {
     // Explicitly type the membership to avoid TypeScript inference issues
     const membership: { role: string } | null = membershipData;
 
-    console.log("Membership check result:", { membership, membershipError });
 
     if (membershipError && membershipError.code !== "PGRST116") {
-      console.error("Error checking membership:", membershipError);
-      console.error("Membership error details:", {
-        code: membershipError.code,
-        message: membershipError.message,
-        details: membershipError.details,
-        hint: membershipError.hint,
-      });
       return Response.json(
         { error: "Database error checking membership" },
         { status: 500 }
@@ -270,7 +221,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (courseError) {
-      console.error("Error checking course creator:", courseError);
       return Response.json(
         { error: "Database error checking course" },
         { status: 500 }
@@ -280,17 +230,9 @@ export async function POST(request: NextRequest) {
     const isCreator = (courseData as any)?.created_by === userId;
     const isMember = membership && !membershipError;
 
-    console.log("Access check:", {
-      isCreator,
-      isMember,
-      membershipRole: (membership as { role: string } | null)?.role || null,
-      courseCreator: (courseData as any)?.created_by?.slice(0, 8),
-      userId: userId?.slice(0, 8),
-    });
 
     // Allow course creators to send messages even if not explicitly enrolled
     if (!isCreator && !isMember) {
-      console.log("User not authorized - not creator or member");
       return Response.json(
         {
           error:
@@ -311,26 +253,16 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    console.log("Message insert result:", { data, error });
 
     if (error) {
-      console.error("Error inserting message:", error);
-      console.error("Error details:", {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      });
       return Response.json(
         { error: `Failed to send message: ${error.message}` },
         { status: 500 }
       );
     }
 
-    console.log("Message sent successfully:", data?.message_id);
     return Response.json({ success: true, message: data });
   } catch (error) {
-    console.error("Unexpected error in POST /api/messages:", error);
     return Response.json(
       {
         error: error instanceof Error ? error.message : "Internal server error",

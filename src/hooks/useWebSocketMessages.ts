@@ -74,7 +74,6 @@ export function useWebSocketMessages(
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch messages";
-      console.error("Error fetching messages:", err);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -87,7 +86,6 @@ export function useWebSocketMessages(
       return;
     }
 
-    console.log(`Setting up SSE for class ${classId}, user ${user.id}`);
 
     fetchMessages();
 
@@ -95,7 +93,6 @@ export function useWebSocketMessages(
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      console.log("SSE connection opened");
       setConnected(true);
       setError(null);
     };
@@ -105,14 +102,12 @@ export function useWebSocketMessages(
         const data = JSON.parse(event.data);
 
         if (data.type === "initial") {
-          console.log("Received initial messages:", data.messages);
           setMessages(data.messages);
           if (data.messages.length > 0) {
             lastMessageIdRef.current =
               data.messages[data.messages.length - 1].message_id;
           }
         } else if (data.type === "new") {
-          console.log("New message from SSE:", data.message);
           const newMessage = data.message;
 
           if (lastMessageIdRef.current !== newMessage.message_id) {
@@ -121,38 +116,26 @@ export function useWebSocketMessages(
                 (msg) => msg.message_id === newMessage.message_id
               );
               if (exists) {
-                console.log(
-                  "Duplicate message detected, skipping:",
-                  newMessage.message_id
-                );
                 return prev;
               }
 
-              console.log(
-                "Adding new message to state:",
-                newMessage.message_id
-              );
               lastMessageIdRef.current = newMessage.message_id;
               return [...prev, newMessage];
             });
           }
         } else if (data.type === "error") {
-          console.error("SSE error:", data.error);
           setError(data.error);
         }
       } catch (err) {
-        console.error("Error parsing SSE message:", err);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.error("SSE connection error:", error);
       setConnected(false);
       setError("Connection lost");
     };
 
     return () => {
-      console.log("Cleaning up SSE connection");
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -188,7 +171,6 @@ export function useWebSocketMessages(
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to send message";
-      console.error("Error sending message:", err);
       setError(errorMessage);
       return false;
     }
@@ -211,7 +193,6 @@ export function useWebSocketMessages(
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to delete message";
-      console.error("Error deleting message:", err);
       setError(errorMessage);
       return false;
     }

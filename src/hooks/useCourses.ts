@@ -54,10 +54,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
               .eq("class_id", course.class_id);
 
             if (countError) {
-              console.warn(
-                `Error getting document count for course ${course.class_id}:`,
-                countError
-              );
             }
 
             return {
@@ -68,7 +64,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
               joined_at: course.user_courses[0]?.joined_at,
             };
           } catch (err) {
-            console.warn(`Error processing course ${course.class_id}:`, err);
             return {
               ...course,
               document_count: 0,
@@ -82,7 +77,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       setCourses(coursesWithStats);
     } catch (err: any) {
-      console.error("Error fetching courses:", err);
       setError(err.message || "Failed to fetch courses");
     } finally {
       setLoading(false);
@@ -128,14 +122,12 @@ export function useCourses(userId?: string): UseCoursesReturn {
       });
 
       if (joinError) {
-        console.warn("Error adding creator to user_courses:", joinError);
       }
 
       await fetchCourses();
 
       return data;
     } catch (err: any) {
-      console.error("Error creating course:", err);
       setError(err.message || "Failed to create course");
       return null;
     }
@@ -151,7 +143,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
         .eq("class_id", classId);
 
       if (deleteDocsError) {
-        console.warn("Error deleting course documents:", deleteDocsError);
       }
 
       const { error: deleteError } = await supabaseClient
@@ -167,7 +158,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       return true;
     } catch (err: any) {
-      console.error("Error deleting course:", err);
       setError(err.message || "Failed to delete course");
       return false;
     }
@@ -228,10 +218,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
               .eq("class_id", course.class_id);
 
             if (countError) {
-              console.warn(
-                `Error getting document count for course ${course.class_id}:`,
-                countError
-              );
             }
 
             return {
@@ -240,7 +226,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
               member_count: course.student_count || 0,
             };
           } catch (err) {
-            console.warn(`Error processing course ${course.class_id}:`, err);
             return {
               ...course,
               document_count: 0,
@@ -252,7 +237,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       return coursesWithStats;
     } catch (err: any) {
-      console.error("Error searching courses:", err);
       return [];
     }
   };
@@ -317,7 +301,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
           .eq("class_id", classId);
 
         if (updateError) {
-          console.warn("Error updating student_count:", updateError);
         }
       }
 
@@ -325,7 +308,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       return true;
     } catch (err: any) {
-      console.error("Error joining course:", err);
       return false;
     }
   };
@@ -351,10 +333,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
               .eq("class_id", course.class_id);
 
             if (countError) {
-              console.warn(
-                `Error getting document count for course ${course.class_id}:`,
-                countError
-              );
             }
 
             const { count: memberCount, error: memberError } =
@@ -364,10 +342,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
                 .eq("class_id", course.class_id);
 
             if (memberError) {
-              console.warn(
-                `Error getting member count for course ${course.class_id}:`,
-                memberError
-              );
             }
 
             let userRole = null;
@@ -396,7 +370,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
               joined_at: joinedAt,
             };
           } catch (err) {
-            console.warn(`Error processing course ${course.class_id}:`, err);
             return {
               ...course,
               document_count: 0,
@@ -410,7 +383,6 @@ export function useCourses(userId?: string): UseCoursesReturn {
 
       return coursesWithStats;
     } catch (err: any) {
-      console.error("Error fetching courses by college:", err);
       return [];
     }
   };
@@ -458,10 +430,6 @@ export function useCourse(classId: string) {
           .eq("class_id", classId);
 
         if (countError) {
-          console.warn(
-            `Error getting document count for course ${classId}:`,
-            countError
-          );
         }
 
         const courseWithStats = {
@@ -472,7 +440,6 @@ export function useCourse(classId: string) {
 
         setCourse(courseWithStats);
       } catch (err: any) {
-        console.error("Error fetching course:", err);
         setError(err.message || "Failed to fetch course");
       } finally {
         setLoading(false);

@@ -57,7 +57,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
         if (error) throw error;
         setEnrolledUsers(data);
       } catch (err: any) {
-        console.error('Error fetching enrolled users:', err);
         setUsersError(err.message || 'Failed to load enrolled users');
       } finally {
         setUsersLoading(false);
@@ -97,7 +96,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
   };
 
   const handleMessage = (person: Person) => {
-    console.log("Messaging:", person.name);
   };
 
   const handleSendMessage = async () => {
@@ -129,7 +127,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
       }
       return false;
     } catch (error) {
-      console.error('Upload failed:', error);
       return false;
     }
   };
@@ -140,10 +137,8 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
       if (result.success) {
         window.location.reload();
       } else {
-        console.error('Delete failed:', result.error);
       }
     } catch (error) {
-      console.error('Delete failed:', error);
     }
   };
 
@@ -158,7 +153,6 @@ export default function CourseDetail({ classId }: CourseDetailProps) {
         }
       }
     } catch (error) {
-      console.error('Failed to join course:', error);
     }
   };
 

@@ -63,7 +63,6 @@ export default function Header({ user, courses, searchAllCourses, joinCourse, on
       await onSignOut();
       setIsProfileOpen(false);
     } catch (error) {
-      console.error("Sign out error:", error);
     }
   };
 

@@ -44,7 +44,7 @@ export async function getCourses(options?: {
             .eq('class_id', course.class_id);
 
           if (countError) {
-            console.warn(`Error getting document count for course ${course.class_id}:`, countError);
+            // Ignore count error for now
           }
 
           const { count: memberCount, error: memberError } = await supabaseClient
@@ -53,7 +53,7 @@ export async function getCourses(options?: {
             .eq('class_id', course.class_id);
 
           if (memberError) {
-            console.warn(`Error getting member count for course ${course.class_id}:`, memberError);
+            // Ignore member count error for now
           }
 
           return {
@@ -62,7 +62,7 @@ export async function getCourses(options?: {
             member_count: memberCount || 0,
           };
         } catch (err) {
-          console.warn(`Error processing course ${course.class_id}:`, err);
+          // Ignore processing error for now
           return {
             ...course,
             document_count: 0,
@@ -74,7 +74,7 @@ export async function getCourses(options?: {
 
     return { data: coursesWithStats, error: null };
   } catch (error: any) {
-    console.error('Error in getCourses:', error);
+    // Error in getCourses
     return { data: [], error };
   }
 }
@@ -97,7 +97,7 @@ export async function getCourseById(
       .eq('class_id', classId);
 
     if (countError) {
-      console.warn(`Error getting document count for course ${classId}:`, countError);
+      // Ignore count error for now
     }
 
     const { count: memberCount, error: memberError } = await supabaseClient
@@ -106,7 +106,7 @@ export async function getCourseById(
       .eq('class_id', classId);
 
     if (memberError) {
-      console.warn(`Error getting member count for course ${classId}:`, memberError);
+      // Ignore member count error for now
     }
 
     const courseWithStats = {
@@ -117,7 +117,7 @@ export async function getCourseById(
 
     return { data: courseWithStats, error: null };
   } catch (error: any) {
-    console.error('Error in getCourseById:', error);
+    // Error in getCourseById
     return { data: null, error };
   }
 }
@@ -147,7 +147,7 @@ export async function createCourse(courseData: {
 
     return { data, error: null };
   } catch (error: any) {
-    console.error('Error in createCourse:', error);
+    // Error in createCourse
     return { data: null, error };
   }
 }
@@ -168,7 +168,7 @@ export async function updateCourse(
 
     return { data, error: null };
   } catch (error: any) {
-    console.error('Error in updateCourse:', error);
+    // Error in updateCourse
     return { data: null, error };
   }
 }
@@ -183,7 +183,7 @@ export async function deleteCourse(
       .eq('class_id', classId);
 
     if (docsError) {
-      console.warn('Error deleting course documents:', docsError);
+      // Ignore document deletion error for now
     }
 
     const { error } = await (supabaseClient
@@ -195,7 +195,7 @@ export async function deleteCourse(
 
     return { success: true, error: null };
   } catch (error: any) {
-    console.error('Error in deleteCourse:', error);
+    // Error in deleteCourse
     return { success: false, error };
   }
 }
@@ -223,7 +223,7 @@ export async function getDocumentsByClass(
 
     return { data: docsWithUsers, error: null };
   } catch (error: any) {
-    console.error('Error in getDocumentsByClass:', error);
+    // Error in getDocumentsByClass
     return { data: [], error };
   }
 }
@@ -292,16 +292,16 @@ export async function uploadDocument(
           .eq('class_id', classId);
 
         if (updateError) {
-          console.warn('Error updating class doc_count:', updateError);
+          // Ignore doc count update error
         }
       }
     } catch (countError) {
-      console.warn('Error updating document count:', countError);
+      // Ignore count update error
     }
 
     return { data, error: null };
   } catch (error: any) {
-    console.error('Error in uploadDocument:', error);
+    // Error in uploadDocument
     return { data: null, error };
   }
 }
@@ -326,7 +326,7 @@ export async function deleteDocument(
           .remove([pathMatch[1]]);
 
         if (storageError) {
-          console.warn('Error deleting from storage:', storageError);
+          // Ignore storage deletion error
         }
       }
     }
@@ -340,7 +340,7 @@ export async function deleteDocument(
 
     return { success: true, error: null };
   } catch (error: any) {
-    console.error('Error in deleteDocument:', error);
+    // Error in deleteDocument
     return { success: false, error };
   }
 }
@@ -359,7 +359,7 @@ export function downloadDocument(docPath: string, fileName: string): void {
       window.open(docPath, '_blank');
     }
   } catch (error: any) {
-    console.error('Error downloading document:', error);
+    // Error downloading document
   }
 }
 
@@ -425,6 +425,25 @@ export async function getEnrolledUsers(
   classId: string
 ): Promise<{ data: any[]; error: Error | null }> {
   try {
+    // Debug: First get all user_courses entries for this class
+    const { data: userCourses, error: userCoursesError } = await (supabaseClient
+      .from('user_courses') as any)
+      .select('*')
+      .eq('class_id', classId);
+
+    if (userCoursesError) {
+      console.error('Error fetching user_courses:', userCoursesError);
+      throw userCoursesError;
+    }
+
+    console.log('Raw user_courses data:', userCourses);
+
+    if (!userCourses || userCourses.length === 0) {
+      console.log('No user_courses found for class:', classId);
+      return { data: [], error: null };
+    }
+
+    // Now try the join query
     const { data, error } = await (supabaseClient
       .from('user_courses') as any)
       .select(`
@@ -442,30 +461,51 @@ export async function getEnrolledUsers(
       .eq('class_id', classId)
       .order('joined_at', { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error with join query:', error);
+      throw error;
+    }
 
-    console.log('Raw enrollments with profiles:', data);
+    console.log('Join query result:', data);
 
     if (!data || data.length === 0) {
       return { data: [], error: null };
     }
 
-    const enrolledUsers = data.map((enrollment: any) => {
-      const profile = enrollment.profiles;
-      const fullName = profile?.full_name || 'Anonymous User';
-      
-      return {
-        id: enrollment.user_id,
-        name: fullName,
-        email: profile?.email || 'unknown@cuny.edu',
-        major: profile?.major || 'Unknown',
-        year: profile?.year || 'Unknown',
-        college: profile?.college || 'CUNY',
-        role: enrollment.role,
-        joined_at: enrollment.joined_at,
-        avatar: fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-      };
-    });
+    // Process the data and handle missing profiles
+    const enrolledUsers = await Promise.all(
+      data.map(async (enrollment: any) => {
+        let profile = enrollment.profiles;
+        
+        console.log(`Processing enrollment for user ${enrollment.user_id}:`, { enrollment, profile });
+        
+        // If profile is null, try to fetch it separately
+        if (!profile) {
+          console.log(`No profile found in join for user ${enrollment.user_id}, trying separate query...`);
+          const { data: fallbackProfile } = await (supabaseClient
+            .from('profiles') as any)
+            .select('*')
+            .eq('id', enrollment.user_id)
+            .single();
+          profile = fallbackProfile;
+          console.log(`Fallback profile result:`, fallbackProfile);
+        }
+        
+        const fullName = profile?.full_name || `User ${enrollment.user_id.slice(0, 8)}`;
+        
+        return {
+          id: enrollment.user_id,
+          name: fullName,
+          email: profile?.email || 'unknown@cuny.edu',
+          major: profile?.major || 'Unknown',
+          year: profile?.year || 'Unknown',
+          college: profile?.college || 'CUNY',
+          role: enrollment.role,
+          joined_at: enrollment.joined_at,
+          avatar: fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+        };
+      })
+    );
 
     console.log('Final enrolled users:', enrolledUsers);
     return { data: enrolledUsers, error: null };

@@ -56,7 +56,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       setDocuments(docsWithUsers);
     } catch (err: any) {
-      console.error("Error fetching documents:", err);
       setError(err.message || "Failed to fetch documents");
     } finally {
       setLoading(false);
@@ -80,12 +79,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         throw new Error("You must be logged in to upload documents");
       }
 
-      console.log("Upload Debug Info:", {
-        userId: user.id,
-        classId: classId,
-        fileName: file.name,
-        fileSize: file.size,
-      });
 
       const { data: membershipData, error: membershipError } = await (
         supabaseClient.from("user_courses") as any
@@ -99,16 +92,13 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
       const membership: { role: string } | null = membershipData;
 
       if (membershipError) {
-        console.error("Class membership error:", membershipError);
         throw new Error("You are not a member of this class");
       }
 
-      console.log("User role in class:", membership?.role);
 
       const fileExt = file.name.split(".").pop();
       const fileName = `${classId}/${user.id}/${Date.now()}.${fileExt}`;
 
-      console.log("Uploading to storage path:", fileName);
 
       const { data: uploadData, error: uploadError } =
         await supabaseClient.storage.from("documents").upload(fileName, file, {
@@ -117,16 +107,11 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         });
 
       if (uploadError) {
-        console.error("Storage upload error:", uploadError);
         if (uploadError.message.includes("bucket")) {
-          console.warn(
-            'Storage bucket may not exist. Please create a "documents" bucket in Supabase.'
-          );
         }
         throw uploadError;
       }
 
-      console.log("Storage upload successful:", uploadData);
 
       const {
         data: { publicUrl },
@@ -134,12 +119,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       const detectedType = docType || getDocumentType(file.name);
 
-      console.log("Creating database record:", {
-        class_id: classId,
-        doc_path: publicUrl,
-        doc_type: detectedType,
-        created_by: user.id,
-      });
 
       const { data: docData, error: docError } = await (
         supabaseClient.from("document") as any
@@ -155,11 +134,9 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         .single();
 
       if (docError) {
-        console.error("Database insert error:", docError);
         throw docError;
       }
 
-      console.log("Document created successfully:", docData);
 
       try {
         const { data: currentClass, error: fetchError } = await (
@@ -180,18 +157,15 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
             .eq("class_id", classId);
 
           if (updateError) {
-            console.warn("Error updating class doc_count:", updateError);
           }
         }
       } catch (countError) {
-        console.warn("Error updating document count:", countError);
       }
 
       await fetchDocuments();
 
       return docData;
     } catch (err: any) {
-      console.error("Error uploading document:", err);
       setError(err.message || "Failed to upload document");
       return null;
     }
@@ -218,7 +192,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
             .remove([pathMatch[1]]);
 
           if (storageError) {
-            console.warn("Error deleting from storage:", storageError);
           }
         }
       }
@@ -252,12 +225,10 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
               .eq("class_id", classId);
 
             if (updateError) {
-              console.warn("Error updating class doc_count:", updateError);
-            }
+              }
           }
         }
       } catch (countError) {
-        console.warn("Error updating document count:", countError);
         // Don't throw here as the document was deleted successfully
       }
 
@@ -265,7 +236,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
 
       return true;
     } catch (err: any) {
-      console.error("Error deleting document:", err);
       setError(err.message || "Failed to delete document");
       return false;
     }
@@ -288,7 +258,6 @@ export function useDocuments(classId?: string): UseDocumentsReturn {
         window.open(docPath, "_blank");
       }
     } catch (err: any) {
-      console.error("Error downloading document:", err);
       setError(err.message || "Failed to download document");
     }
   };

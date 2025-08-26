@@ -26,7 +26,6 @@ export default function Login() {
     }
 
     try {
-      console.log("Signing in with Supabase...", { email });
 
       const { data, error: signInError } =
         await supabase.auth.signInWithPassword({
@@ -35,18 +34,15 @@ export default function Login() {
         });
 
       if (signInError) {
-        console.error("Supabase signin error:", signInError);
         throw new Error(signInError.message);
       }
 
       if (data.user) {
-        console.log("User signed in successfully:", data.user);
         router.push("/dashboard");
       } else {
         throw new Error("No user data returned");
       }
     } catch (err) {
-      console.error("Login error:", err);
       setError(err instanceof Error ? err.message : "Login failed");
       setLoading(false);
     }

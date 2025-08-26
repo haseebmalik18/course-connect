@@ -10,13 +10,11 @@ const parseEmailToFullName = (email: string): string => {
   
   const parts = localPart.split('.');
   
-  console.log("Parsing email parts:", { localPart, parts });
   
   const nameParts = parts.filter(part => {
     return /[a-zA-Z]/.test(part);
   });
   
-  console.log("Filtered name parts:", nameParts);
   
   if (nameParts.length >= 2) {
     const firstName = nameParts[0].replace(/\d+/g, '').charAt(0).toUpperCase() + nameParts[0].replace(/\d+/g, '').slice(1).toLowerCase();
@@ -31,7 +29,6 @@ const parseEmailToFullName = (email: string): string => {
 };
 
 export default function Register() {
-  console.log("Testing email parsing:", parseEmailToFullName("faikar.herzaman70@myhunter.cuny.edu"));
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,7 +63,6 @@ export default function Register() {
     }
 
     try {
-      console.log("Signing up with Supabase...", { email, password });
 
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.toLowerCase(),
@@ -77,28 +73,14 @@ export default function Register() {
       });
 
       if (signUpError) {
-        console.error("Supabase signup error:", signUpError);
         throw new Error(signUpError.message);
       }
 
       if (data.user) {
-        console.log("User created successfully:", data.user);
         
         const fullName = parseEmailToFullName(email);
-        console.log("Original email:", email);
-        console.log("Parsed full name:", fullName);
-        console.log("Parsing breakdown:", {
-          localPart: email.split('@')[0],
-          parts: email.split('@')[0].split('.').filter(part => !/\d+/.test(part)),
-          fullName
-        });
         
         try {
-          console.log("Attempting to insert profile with data:", {
-            id: data.user.id,
-            email: email.toLowerCase(),
-            full_name: fullName,
-          });
 
           const { data: existingProfile, error: checkError } = await (supabase
             .from('profiles') as any)
@@ -107,9 +89,7 @@ export default function Register() {
             .single();
 
           if (checkError && checkError.code !== 'PGRST116') {
-            console.error("Error checking existing profile:", checkError);
           } else if (existingProfile) {
-            console.log("Profile already exists:", existingProfile);
             const { data: updateData, error: updateError } = await (supabase
               .from('profiles') as any)
               .update({ full_name: fullName })
@@ -117,10 +97,8 @@ export default function Register() {
               .select();
 
             if (updateError) {
-              console.error("Profile update error:", updateError);
               setError(`Account created but profile update failed: ${updateError.message}`);
             } else {
-              console.log("Profile updated successfully:", updateData);
             }
           } else {
             const { data: profileData, error: profileError } = await (supabase
@@ -133,14 +111,11 @@ export default function Register() {
               .select();
 
             if (profileError) {
-              console.error("Profile creation error:", profileError);
               setError(`Account created but profile setup failed: ${profileError.message}`);
             } else {
-              console.log("Profile created successfully:", profileData);
             }
           }
         } catch (profileErr) {
-          console.error("Profile creation failed:", profileErr);
           setError(`Account created but profile setup failed: ${profileErr instanceof Error ? profileErr.message : 'Unknown error'}`);
         }
 
@@ -151,7 +126,6 @@ export default function Register() {
         throw new Error("No user data returned");
       }
     } catch (err) {
-      console.error("Registration error:", err);
       setError(err instanceof Error ? err.message : "Registration failed");
       setLoading(false);
     }
