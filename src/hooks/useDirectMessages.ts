@@ -156,51 +156,49 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
     fetchMessages();
 
     const channel = supabase
-      .channel(`direct_messages:${currentUserId}:${recipientId}`)
+      .channel(`direct_messages:${Math.min(currentUserId, recipientId)}:${Math.max(currentUserId, recipientId)}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "direct_messages",
-          filter: `or(and(sender_id.eq.${currentUserId},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${currentUserId}))`,
         },
         async (payload: any) => {
-          // Fetch the full message with user data
-          const { data, error } = await (supabase as any)
-            .from("direct_messages")
-            .select("*")
-            .eq("message_id", payload.new.message_id)
+          // Only process messages for this conversation
+          const newMessage = payload.new;
+          const isRelevantMessage = 
+            (newMessage.sender_id === currentUserId && newMessage.recipient_id === recipientId) ||
+            (newMessage.sender_id === recipientId && newMessage.recipient_id === currentUserId);
+          
+          if (!isRelevantMessage) return;
+
+          // Fetch user profiles separately
+          const { data: senderProfile } = await (supabase as any)
+            .from("profiles")
+            .select("id, full_name, email")
+            .eq("id", newMessage.sender_id)
+            .single();
+          
+          const { data: recipientProfile } = await (supabase as any)
+            .from("profiles")
+            .select("id, full_name, email")
+            .eq("id", newMessage.recipient_id)
             .single();
 
-          if (!error && data) {
-            // Fetch user profiles separately
-            const { data: senderProfile } = await (supabase as any)
-              .from("profiles")
-              .select("id, full_name, email")
-              .eq("id", data.sender_id)
-              .single();
-            
-            const { data: recipientProfile } = await (supabase as any)
-              .from("profiles")
-              .select("id, full_name, email")
-              .eq("id", data.recipient_id)
-              .single();
+          const messageWithUser = {
+            ...newMessage,
+            sender: senderProfile,
+            recipient: recipientProfile,
+          };
 
-            const messageWithUser = {
-              ...data,
-              sender: senderProfile,
-              recipient: recipientProfile,
-            };
-
-            setMessages((prev: DirectMessageWithUser[]) => {
-              // Avoid duplicates
-              if (prev.some((msg: DirectMessageWithUser) => msg.message_id === messageWithUser.message_id)) {
-                return prev;
-              }
-              return [...prev, messageWithUser];
-            });
-          }
+          setMessages((prev: DirectMessageWithUser[]) => {
+            // Avoid duplicates
+            if (prev.some((msg: DirectMessageWithUser) => msg.message_id === messageWithUser.message_id)) {
+              return prev;
+            }
+            return [...prev, messageWithUser];
+          });
         }
       )
       .on(
@@ -211,7 +209,14 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           table: "direct_messages",
         },
         (payload: any) => {
-          setMessages((prev: DirectMessageWithUser[]) => prev.filter((msg: DirectMessageWithUser) => msg.message_id !== payload.old.message_id));
+          const deletedMessage = payload.old;
+          const isRelevantMessage = 
+            (deletedMessage.sender_id === currentUserId && deletedMessage.recipient_id === recipientId) ||
+            (deletedMessage.sender_id === recipientId && deletedMessage.recipient_id === currentUserId);
+          
+          if (!isRelevantMessage) return;
+          
+          setMessages((prev: DirectMessageWithUser[]) => prev.filter((msg: DirectMessageWithUser) => msg.message_id !== deletedMessage.message_id));
         }
       )
       .on(
@@ -222,9 +227,16 @@ export function useDirectMessages({ currentUserId, recipientId }: UseDirectMessa
           table: "direct_messages",
         },
         (payload: any) => {
+          const updatedMessage = payload.new;
+          const isRelevantMessage = 
+            (updatedMessage.sender_id === currentUserId && updatedMessage.recipient_id === recipientId) ||
+            (updatedMessage.sender_id === recipientId && updatedMessage.recipient_id === currentUserId);
+          
+          if (!isRelevantMessage) return;
+          
           setMessages((prev: DirectMessageWithUser[]) => prev.map((msg: DirectMessageWithUser) => 
-            msg.message_id === payload.new.message_id 
-              ? { ...msg, ...payload.new }
+            msg.message_id === updatedMessage.message_id 
+              ? { ...msg, ...updatedMessage }
               : msg
           ));
         }
