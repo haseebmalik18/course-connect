@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseClient as supabase } from "@/lib/supabaseClient";
 import { DirectMessage, DirectMessageWithUser } from "@/lib/types/database";
 
 interface UseDirectMessagesProps {

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Class, Document, Profile, Message } from "./types/database";
+import type { Class, Document, Profile, Message, DirectMessage } from "./types/database";
 
 export interface Database {
   public: {
@@ -26,6 +26,11 @@ export interface Database {
         Row: Message;
         Insert: Omit<Message, 'message_id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Message, 'message_id' | 'created_at' | 'updated_at'>>;
+      };
+      direct_messages: {
+        Row: DirectMessage;
+        Insert: Omit<DirectMessage, 'message_id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<DirectMessage, 'message_id' | 'created_at' | 'updated_at'>>;
       };
     };
   };
@@ -69,4 +74,4 @@ export const supabaseServerClient = supabaseServiceRoleKey
     })
   : null;
 
-export type { Class, Document, Profile, Message } from "./types/database";
+export type { Class, Document, Profile, Message, DirectMessage } from "./types/database";
