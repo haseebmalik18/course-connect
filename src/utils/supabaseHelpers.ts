@@ -425,7 +425,16 @@ export async function getEnrolledUsers(
   classId: string
 ): Promise<{ data: any[]; error: Error | null }> {
   try {
-    // Debug: First get all user_courses entries for this class
+    // Debug: Check the actual class record and its student_count
+    const { data: classInfo } = await (supabaseClient
+      .from('class') as any)
+      .select('student_count, created_by')
+      .eq('class_id', classId)
+      .single();
+    
+    console.log('Class info (student_count, created_by):', classInfo);
+
+    // Get all user_courses entries for this class
     const { data: userCourses, error: userCoursesError } = await (supabaseClient
       .from('user_courses') as any)
       .select('*')
@@ -436,34 +445,25 @@ export async function getEnrolledUsers(
       throw userCoursesError;
     }
 
-    console.log('Raw user_courses data:', userCourses);
+    console.log('Raw user_courses data (count:', userCourses?.length, '):', userCourses);
 
     if (!userCourses || userCourses.length === 0) {
       console.log('No user_courses found for class:', classId);
       return { data: [], error: null };
     }
 
-    // Get all user_courses entries first, then fetch profiles separately to ensure we get all users
-    const { data: allEnrollments, error } = await (supabaseClient
-      .from('user_courses') as any)
-      .select('user_id, role, joined_at')
-      .eq('class_id', classId)
-      .order('joined_at', { ascending: true });
+    // Also check if there are any profiles that match these user IDs
+    const userIds = userCourses.map((uc: any) => uc.user_id);
+    const { data: allProfiles } = await (supabaseClient
+      .from('profiles') as any)
+      .select('*')
+      .in('id', userIds);
+    
+    console.log('All profiles for these users:', allProfiles);
 
-    if (error) {
-      console.error('Error fetching user enrollments:', error);
-      throw error;
-    }
-
-    console.log('All enrollment data:', allEnrollments);
-
-    if (!allEnrollments || allEnrollments.length === 0) {
-      return { data: [], error: null };
-    }
-
-    // Now fetch profiles for each user separately to ensure we don't lose any users
+    // Now fetch profiles for each user separately
     const enrolledUsers = await Promise.all(
-      allEnrollments.map(async (enrollment: any) => {
+      userCourses.map(async (enrollment: any) => {
         const { data: profile } = await (supabaseClient
           .from('profiles') as any)
           .select('*')
@@ -488,7 +488,7 @@ export async function getEnrolledUsers(
       })
     );
 
-    console.log('Final enrolled users:', enrolledUsers);
+    console.log('Final enrolled users (count:', enrolledUsers.length, '):', enrolledUsers);
     return { data: enrolledUsers, error: null };
   } catch (error: any) {
     console.error('Error fetching enrolled users:', error);
